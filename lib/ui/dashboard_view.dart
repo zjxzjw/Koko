@@ -72,8 +72,8 @@ class _DashboardViewState extends State<DashboardView> {
           child: Text(
             AppLocalizations.of('remaining_balance'),
             style: TextStyle(
-              fontSize: 10,
-              color: AppColors.dimText,
+              fontSize: 12,
+              color: AppColors.primaryText,
               fontWeight: FontWeight.w600,
               letterSpacing: 1.1,
             ),
@@ -105,7 +105,7 @@ class _DashboardViewState extends State<DashboardView> {
                 'total': data.total.toStringAsFixed(2),
               }),
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 12,
                 color: AppColors.text(0.35),
               ),
             ),
@@ -150,8 +150,8 @@ class _DashboardViewState extends State<DashboardView> {
           child: Text(
             AppLocalizations.of('model_breakdown'),
             style: TextStyle(
-              fontSize: 10,
-              color: AppColors.dimText,
+              fontSize: 14,
+              color: AppColors.primaryText,
               fontWeight: FontWeight.w600,
               letterSpacing: 1.1,
             ),
@@ -287,9 +287,9 @@ class _DashboardViewState extends State<DashboardView> {
   Widget _chartLabel(String text) => Text(
     text,
     style: TextStyle(
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: FontWeight.w600,
-      color: AppColors.secondaryText,
+      color: AppColors.primaryText,
     ),
   );
 
