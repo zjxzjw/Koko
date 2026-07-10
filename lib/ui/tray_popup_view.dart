@@ -123,7 +123,7 @@ class _TrayPopupViewState extends State<TrayPopupView> {
                 else ...[
                   Text(
                     data != null
-                        ? '${data.currencySymbol}${data.remaining.toStringAsFixed(2)}'
+                        ? '${data.currencySymbol} ${data.remaining.toStringAsFixed(2)}'
                         : '--.--',
                     style: TextStyle(
                       fontSize: 30,

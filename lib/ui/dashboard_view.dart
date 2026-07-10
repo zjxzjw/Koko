@@ -94,7 +94,7 @@ class _DashboardViewState extends State<DashboardView> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
                   data != null
-                      ? '${data.currencySymbol}${data.remaining.toStringAsFixed(2)}'
+                      ? '${data.currencySymbol} ${data.remaining.toStringAsFixed(2)}'
                       : '--.--',
                   style: TextStyle(
                     fontSize: 34,
@@ -131,7 +131,7 @@ class _DashboardViewState extends State<DashboardView> {
                       const Spacer(),
                       _chartChip(
                         AppLocalizations.of('cost'),
-                        '${data.currencySymbol}${data.used.toStringAsFixed(2)}',
+                        '${data.currencySymbol} ${data.used.toStringAsFixed(2)}',
                         const Color(0xFF3B82F6),
                       ),
                       const SizedBox(width: 12),
@@ -173,10 +173,6 @@ class _DashboardViewState extends State<DashboardView> {
                   data?.currencySymbol ?? '\$',
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                child: _buildFooter(context),
-              ),
             ],
           );
         },
@@ -212,7 +208,7 @@ class _DashboardViewState extends State<DashboardView> {
             getTooltipItem: (group, groupIndex, rod, rodIndex) {
               final d = daily[groupIndex];
               return BarTooltipItem(
-                '${d.date.day}/${d.date.month}\n${data.currencySymbol}${d.cost.toStringAsFixed(3)}',
+                '${d.date.day}/${d.date.month}\n${data.currencySymbol} ${d.cost.toStringAsFixed(3)}',
                 TextStyle(
                   color: Colors.white,
                   fontSize: 10,
@@ -235,7 +231,7 @@ class _DashboardViewState extends State<DashboardView> {
               showTitles: true,
               reservedSize: 32,
               getTitlesWidget: (v, meta) => Text(
-                v == 0 ? '' : '${data.currencySymbol}${v.toStringAsFixed(0)}',
+                v == 0 ? '' : '${data.currencySymbol} ${v.toStringAsFixed(0)}',
                 style: TextStyle(
                   fontSize: 8,
                   color: Colors.black.withValues(alpha: 0.3),
@@ -344,42 +340,87 @@ class _DashboardViewState extends State<DashboardView> {
             color: Colors.black.withValues(alpha: 0.04),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: widget.activeProvider.id,
-              dropdownColor: Colors.white,
-              isExpanded: true,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              icon: Icon(
-                Icons.keyboard_arrow_down,
-                size: 18,
-                color: Colors.black.withValues(alpha: 0.4),
+          child: MenuAnchor(
+            alignmentOffset: const Offset(0, 4),
+            style: MenuStyle(
+              shape: WidgetStateProperty.all(
+                RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-              style: TextStyle(
-                color: Colors.black.withValues(alpha: 0.85),
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-              items: widget.allProviders
-                  .map(
-                    (p) => DropdownMenuItem(
-                      value: p.id,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 2,
+              padding: WidgetStateProperty.all(EdgeInsets.zero),
+              backgroundColor: WidgetStateProperty.all(Colors.white),
+              elevation: WidgetStateProperty.all(4),
+            ),
+            builder: (BuildContext context, MenuController controller,
+                Widget? child) {
+              return InkWell(
+                onTap: () {
+                  if (controller.isOpen) {
+                    controller.close();
+                  } else {
+                    controller.open();
+                  }
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          widget.activeProvider.name,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.black.withValues(alpha: 0.85),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                        child: Text(p.name, overflow: TextOverflow.ellipsis),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.keyboard_arrow_down,
+                        size: 18,
+                        color: Colors.black.withValues(alpha: 0.4),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+            menuChildren: widget.allProviders
+                .map(
+                  (p) => MenuItemButton(
+                    onPressed: () {
+                      if (p.id != widget.activeProvider.id) {
+                        _switchProvider(p.id);
+                      }
+                    },
+                    style: MenuItemButton.styleFrom(
+                      minimumSize: const Size(160, 32),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
                       ),
                     ),
-                  )
-                  .toList(),
-              onChanged: (id) {
-                if (id != null && id != widget.activeProvider.id) {
-                  _switchProvider(id);
-                }
-              },
-            ),
+                    child: Text(
+                      p.name,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: p.id == widget.activeProvider.id
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
           ),
         ),
         Row(
@@ -395,6 +436,24 @@ class _DashboardViewState extends State<DashboardView> {
                 ),
               ),
             const SizedBox(width: 8),
+            IconButton(
+              icon: Icon(
+                Icons.settings_outlined,
+                size: 16,
+                color: Colors.black.withValues(alpha: 0.35),
+              ),
+              onPressed: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const SettingsView(),
+                  ),
+                );
+                widget.onRefreshRequested();
+              },
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              tooltip: AppLocalizations.of('settings'),
+            ),
             IconButton(
               icon: Icon(
                 Icons.refresh_rounded,
@@ -534,31 +593,4 @@ class _DashboardViewState extends State<DashboardView> {
     );
   }
 
-  Widget _buildFooter(BuildContext context) {
-    return InkWell(
-      onTap: () async {
-        await Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: (_) => const SettingsView()));
-        widget.onRefreshRequested();
-      },
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        height: 32,
-        width: double.infinity,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          AppLocalizations.of('preferences'),
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.black.withValues(alpha: 0.45),
-          ),
-        ),
-      ),
-    );
-  }
 }

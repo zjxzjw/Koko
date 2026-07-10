@@ -60,6 +60,8 @@ class AppLocalizations {
     'hint_key': 'sk-...',
     'language': 'Language',
     'settings': 'Settings',
+    'general_settings': 'General',
+    'model_settings': 'Model Providers',
     'today_usage': "Today's Usage",
     'balance_monitor': 'KOKO \u2014 LLM Balance Monitor',
     'balance_monitor_long':
@@ -104,6 +106,8 @@ class AppLocalizations {
     'hint_key': 'sk-...',
     'language': '语言',
     'settings': '设置',
+    'general_settings': '通用设置',
+    'model_settings': '模型设置',
     'today_usage': '今日用量',
     'balance_monitor': 'KOKO \u2014 LLM 余额监控',
     'balance_monitor_long':

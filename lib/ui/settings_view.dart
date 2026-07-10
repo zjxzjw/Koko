@@ -247,11 +247,7 @@ class _SettingsViewState extends State<SettingsView> {
         iconTheme: IconThemeData(color: Colors.black.withValues(alpha: 0.6)),
         actions: [
           IconButton(
-            icon: Icon(
-              Icons.add,
-              size: 20,
-              color: Colors.black.withValues(alpha: 0.6),
-            ),
+            icon: const Icon(Icons.add),
             onPressed: () => _showEditor(),
           ),
         ],
@@ -265,9 +261,12 @@ class _SettingsViewState extends State<SettingsView> {
               ),
             )
           : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                _buildSectionHeader(AppLocalizations.of('general_settings')),
                 _buildLanguageSelector(),
-                const Divider(height: 1),
+                const SizedBox(height: 8),
+                _buildSectionHeader(AppLocalizations.of('model_settings')),
                 Expanded(
                   child: _providers.isEmpty
                       ? Center(
@@ -369,41 +368,116 @@ class _SettingsViewState extends State<SettingsView> {
             ),
           ),
           const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.04),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _localeCode,
-                dropdownColor: Colors.white,
-                isDense: true,
-                padding: EdgeInsets.zero,
-                icon: Icon(Icons.keyboard_arrow_down,
-                    size: 18, color: Colors.black.withValues(alpha: 0.4)),
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.black.withValues(alpha: 0.85),
+          MenuAnchor(
+            alignmentOffset: const Offset(0, 4),
+            style: MenuStyle(
+              shape: WidgetStateProperty.all(
+                RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                items: const [
-                  DropdownMenuItem(
-                    value: 'en',
-                    child: Text('English'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'zh',
-                    child: Text('中文'),
-                  ),
-                ],
-                onChanged: (v) {
-                  if (v != null) _changeLocale(v);
-                },
               ),
+              padding: WidgetStateProperty.all(EdgeInsets.zero),
+              backgroundColor: WidgetStateProperty.all(Colors.white),
+              elevation: WidgetStateProperty.all(4),
             ),
+            builder: (BuildContext context, MenuController controller,
+                Widget? child) {
+              return InkWell(
+                onTap: () {
+                  if (controller.isOpen) {
+                    controller.close();
+                  } else {
+                    controller.open();
+                  }
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _localeCode == 'en' ? 'English' : '中文',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.black.withValues(alpha: 0.85),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.keyboard_arrow_down,
+                        size: 18,
+                        color: Colors.black.withValues(alpha: 0.4),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+            menuChildren: [
+              MenuItemButton(
+                onPressed: () => _changeLocale('en'),
+                style: MenuItemButton.styleFrom(
+                  minimumSize: const Size(100, 32),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                ),
+                child: Text(
+                  'English',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: _localeCode == 'en'
+                        ? FontWeight.w600
+                        : FontWeight.w400,
+                  ),
+                ),
+              ),
+              MenuItemButton(
+                onPressed: () => _changeLocale('zh'),
+                style: MenuItemButton.styleFrom(
+                  minimumSize: const Size(100, 32),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                ),
+                child: Text(
+                  '中文',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: _localeCode == 'zh'
+                        ? FontWeight.w600
+                        : FontWeight.w400,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 10,
+          color: Colors.black.withValues(alpha: 0.35),
+          fontWeight: FontWeight.w600,
+          letterSpacing: 1.1,
+        ),
       ),
     );
   }

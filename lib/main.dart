@@ -26,7 +26,8 @@ void main() async {
 
   await windowManager.ensureInitialized();
 
-  WindowOptions windowOptions = const WindowOptions(
+  const windowOptions = WindowOptions(
+    size: _kFullSize,
     center: true,
     backgroundColor: Colors.white,
     skipTaskbar: true,
@@ -36,6 +37,7 @@ void main() async {
 
   windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.setAsFrameless();
+    await windowManager.setResizable(false);
     await windowManager.show();
     await windowManager.focus();
   });
