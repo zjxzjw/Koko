@@ -6,6 +6,12 @@
 
 ---
 
+## Screenshots / 界面预览
+
+| 仪表盘 (Dashboard) | 托盘弹窗 (Tray Popup) |
+|---|---|
+| ![Dashboard](readme-1.png) | ![Tray Popup](readme-2.png) |
+
 ## Features
 
 - **System tray integration** — Lives in your macOS menu bar or Windows system tray. Click to see your balance at a glance, hide on blur.
