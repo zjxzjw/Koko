@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'i18n/app_localizations.dart';
 import 'models/provider_model.dart';
+import 'services/api_service.dart';
 import 'services/storage_service.dart';
 import 'ui/dashboard_view.dart';
 import 'ui/tray_popup_view.dart';
@@ -59,6 +61,9 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
   BalanceResult? _lastBalance;
   bool _isFullView = true;
   String _localeCode = 'en';
+  Future<BalanceResult>? _balanceFuture;
+  Timer? _refreshTimer;
+  Color _balanceColor = Colors.black.withValues(alpha: 0.85);
 
   @override
   void initState() {
@@ -70,6 +75,7 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
     trayManager.removeListener(this);
     windowManager.removeListener(this);
     super.dispose();
@@ -86,20 +92,20 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
     }
     await _loadLocale();
     try {
-      await trayManager.setToolTip(
-        AppLocalizations.of('balance_monitor'),
-      );
+      await trayManager.setToolTip(AppLocalizations.of('balance_monitor'));
     } catch (e) {
       debugPrint('⚠ Tray setToolTip error: $e');
     }
     await _syncAppState();
+    await _fetchBalance();
+    _scheduleTimer();
   }
 
   Future<void> _loadLocale() async {
     final code = await StorageService.loadLocale();
     _localeCode = code;
     AppLocalizations.setLocale(code);
-    if (mounted) setState(() {});
+    if (mounted) { setState(() {}); }
   }
 
   Future<void> _syncAppState() async {
@@ -125,9 +131,55 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
     }
   }
 
+  Future<void> _fetchBalance() async {
+    if (_activeProvider == null) return;
+    final future = ApiService.fetchBalance(_activeProvider!);
+    if (mounted) {
+      setState(() {
+        _balanceFuture = future;
+      });
+    }
+    try {
+      final result = await future;
+      _lastBalance = result;
+      _onBalanceUpdated(result);
+    } catch (_) {}
+    if (mounted) { setState(() {}); }
+  }
+
+  void _scheduleTimer() {
+    _refreshTimer?.cancel();
+    final interval = _activeProvider?.refreshIntervalMinutes ?? 0;
+    if (interval > 0) {
+      _refreshTimer = Timer.periodic(
+        Duration(minutes: interval),
+        (_) => _fetchBalance(),
+      );
+    }
+  }
+
+  Future<void> _onRefreshRequested() async {
+    await _syncAppState();
+    _scheduleTimer();
+    await _fetchBalance();
+  }
+
   void _onBalanceUpdated(BalanceResult? result) {
     _lastBalance = result;
+    _balanceColor = _calcBalanceColor(result, _activeProvider);
     _updateTrayTitle();
+  }
+
+  Color _calcBalanceColor(BalanceResult? balance, ProviderConfig? provider) {
+    if (balance == null || provider == null) {
+      return Colors.black.withValues(alpha: 0.85);
+    }
+    if (balance.remaining < 0) return Colors.red.shade700;
+    if (provider.minBalance != null &&
+        balance.remaining < provider.minBalance!) {
+      return Colors.amber.shade700;
+    }
+    return Colors.black.withValues(alpha: 0.85);
   }
 
   void _updateTrayTitle() {
@@ -137,12 +189,11 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
     if (_lastBalance != null) {
       final sym = _lastBalance!.currencySymbol;
       title =
-          '${provider.name} $sym${_lastBalance!.remaining.toStringAsFixed(2)}';
+          '${provider.name} $sym ${_lastBalance!.remaining.toStringAsFixed(2)}';
     } else {
       title = provider.name;
     }
-    final remaining =
-        _lastBalance?.remaining.toStringAsFixed(2) ?? '--.--';
+    final remaining = _lastBalance?.remaining.toStringAsFixed(2) ?? '--.--';
     final used = _lastBalance?.used.toStringAsFixed(2) ?? '--.--';
     final sym = _lastBalance?.currencySymbol ?? '\$';
     try {
@@ -162,7 +213,11 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
 
   Future<void> _showTrayPopup() async {
     await windowManager.setSize(_kPopupSize);
-    if (mounted) setState(() => _isFullView = false);
+    if (mounted) {
+      setState(() {
+        _isFullView = false;
+      });
+    }
     try {
       final trayBounds = await trayManager.getBounds();
       if (trayBounds != null && Platform.isMacOS) {
@@ -181,7 +236,11 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
 
   Future<void> _showFullWindow() async {
     await windowManager.setSize(_kFullSize);
-    if (mounted) setState(() => _isFullView = true);
+    if (mounted) {
+      setState(() {
+        _isFullView = true;
+      });
+    }
     await windowManager.center();
     await windowManager.show();
     await windowManager.focus();
@@ -214,13 +273,21 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
   @override
   void onWindowBlur() async {
     await windowManager.hide();
-    if (mounted) setState(() => _isFullView = false);
+    if (mounted) {
+      setState(() {
+        _isFullView = false;
+      });
+    }
   }
 
   @override
   void onWindowClose() async {
     await windowManager.hide();
-    if (mounted) setState(() => _isFullView = false);
+    if (mounted) {
+      setState(() {
+        _isFullView = false;
+      });
+    }
   }
 
   @override
@@ -239,8 +306,11 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.dns_outlined, size: 48,
-                    color: Colors.black.withValues(alpha: 0.2)),
+                Icon(
+                  Icons.dns_outlined,
+                  size: 48,
+                  color: Colors.black.withValues(alpha: 0.2),
+                ),
                 const SizedBox(height: 16),
                 Text(
                   'No providers configured',
@@ -276,12 +346,16 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
           ? DashboardView(
               activeProvider: _activeProvider!,
               allProviders: _providers,
-              onRefreshRequested: _syncAppState,
-              onBalanceUpdated: _onBalanceUpdated,
+              balanceFuture: _balanceFuture,
+              onRefresh: _fetchBalance,
+              onRefreshRequested: _onRefreshRequested,
+              balanceColor: _balanceColor,
             )
           : TrayPopupView(
               activeProvider: _activeProvider!,
+              balanceFuture: _balanceFuture,
               onOpenFullWindow: _showFullWindow,
+              balanceColor: _balanceColor,
             ),
     );
   }

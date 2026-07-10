@@ -54,12 +54,14 @@ class StorageService {
         name: 'DeepSeek',
         baseUrl: 'https://api.deepseek.com',
         apiKey: 'sk-***',
+        refreshIntervalMinutes: 10,
       ),
       ProviderConfig(
         id: '2',
         name: 'OpenAI',
         baseUrl: 'https://api.openai.com',
         apiKey: 'sk-***',
+        refreshIntervalMinutes: 10,
       ),
     ];
   }

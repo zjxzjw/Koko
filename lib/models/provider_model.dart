@@ -4,6 +4,8 @@ class ProviderConfig {
   String baseUrl;
   String apiKey;
   String? customBalancePath;
+  int refreshIntervalMinutes;
+  double? minBalance;
 
   ProviderConfig({
     required this.id,
@@ -11,6 +13,8 @@ class ProviderConfig {
     required this.baseUrl,
     required this.apiKey,
     this.customBalancePath,
+    this.refreshIntervalMinutes = 0,
+    this.minBalance,
   });
 
   Map<String, dynamic> toMap() => {
@@ -19,6 +23,8 @@ class ProviderConfig {
     'baseUrl': baseUrl,
     'apiKey': apiKey,
     'customBalancePath': customBalancePath,
+    'refreshIntervalMinutes': refreshIntervalMinutes,
+    'minBalance': minBalance,
   };
 
   factory ProviderConfig.fromMap(Map<String, dynamic> map) => ProviderConfig(
@@ -27,6 +33,8 @@ class ProviderConfig {
     baseUrl: map['baseUrl'] as String,
     apiKey: map['apiKey'] as String,
     customBalancePath: map['customBalancePath'] as String?,
+    refreshIntervalMinutes: map['refreshIntervalMinutes'] as int? ?? 0,
+    minBalance: (map['minBalance'] as num?)?.toDouble(),
   );
 
   ProviderConfig copyWith({
@@ -34,12 +42,17 @@ class ProviderConfig {
     String? baseUrl,
     String? apiKey,
     String? customBalancePath,
+    int? refreshIntervalMinutes,
+    double? minBalance,
   }) => ProviderConfig(
     id: id,
     name: name ?? this.name,
     baseUrl: baseUrl ?? this.baseUrl,
     apiKey: apiKey ?? this.apiKey,
     customBalancePath: customBalancePath ?? this.customBalancePath,
+    refreshIntervalMinutes:
+        refreshIntervalMinutes ?? this.refreshIntervalMinutes,
+    minBalance: minBalance ?? this.minBalance,
   );
 }
 

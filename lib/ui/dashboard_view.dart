@@ -4,22 +4,25 @@ import 'package:window_manager/window_manager.dart';
 
 import '../i18n/app_localizations.dart';
 import '../models/provider_model.dart';
-import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import 'settings_view.dart';
 
 class DashboardView extends StatefulWidget {
   final ProviderConfig activeProvider;
   final List<ProviderConfig> allProviders;
+  final Future<BalanceResult>? balanceFuture;
+  final VoidCallback onRefresh;
   final VoidCallback onRefreshRequested;
-  final void Function(BalanceResult?) onBalanceUpdated;
+  final Color balanceColor;
 
   const DashboardView({
     super.key,
     required this.activeProvider,
     required this.allProviders,
+    required this.balanceFuture,
+    required this.onRefresh,
     required this.onRefreshRequested,
-    required this.onBalanceUpdated,
+    required this.balanceColor,
   });
 
   @override
@@ -27,26 +30,12 @@ class DashboardView extends StatefulWidget {
 }
 
 class _DashboardViewState extends State<DashboardView> {
-  late Future<BalanceResult> _balanceFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _refreshData();
-  }
-
   @override
   void didUpdateWidget(covariant DashboardView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.activeProvider.id != widget.activeProvider.id) {
-      _refreshData();
+      widget.onRefresh();
     }
-  }
-
-  void _refreshData() {
-    setState(() {
-      _balanceFuture = ApiService.fetchBalance(widget.activeProvider);
-    });
   }
 
   Future<void> _switchProvider(String newId) async {
@@ -59,14 +48,20 @@ class _DashboardViewState extends State<DashboardView> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: FutureBuilder<BalanceResult>(
-        future: _balanceFuture,
+        future: widget.balanceFuture,
         builder: (context, snapshot) {
           final data = snapshot.data;
           final error = snapshot.error;
 
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            widget.onBalanceUpdated(data);
-          });
+          if (widget.balanceFuture == null) {
+            return const Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            );
+          }
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -99,7 +94,7 @@ class _DashboardViewState extends State<DashboardView> {
                   style: TextStyle(
                     fontSize: 34,
                     fontWeight: FontWeight.w300,
-                    color: Colors.black.withValues(alpha: 0.85),
+                    color: widget.balanceColor,
                     letterSpacing: -0.5,
                   ),
                 ),
@@ -137,7 +132,9 @@ class _DashboardViewState extends State<DashboardView> {
                       const SizedBox(width: 12),
                       _chartChip(
                         AppLocalizations.of('tokens'),
-                        _fmtTokens(data.daily.fold<int>(0, (s, d) => s + d.tokens)),
+                        _fmtTokens(
+                          data.daily.fold<int>(0, (s, d) => s + d.tokens),
+                        ),
                         const Color(0xFF10B981),
                       ),
                     ],
@@ -317,7 +314,7 @@ class _DashboardViewState extends State<DashboardView> {
       ),
       const SizedBox(width: 4),
       Text(
-                    '$label $value',
+        '$label $value',
         style: TextStyle(
           fontSize: 10,
           color: Colors.black.withValues(alpha: 0.45),
@@ -346,55 +343,57 @@ class _DashboardViewState extends State<DashboardView> {
             alignmentOffset: const Offset(0, 4),
             style: MenuStyle(
               shape: WidgetStateProperty.all(
-                RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               padding: WidgetStateProperty.all(EdgeInsets.zero),
               backgroundColor: WidgetStateProperty.all(Colors.white),
               elevation: WidgetStateProperty.all(4),
             ),
-            builder: (BuildContext context, MenuController controller,
-                Widget? child) {
-              return InkWell(
-                onTap: () {
-                  if (controller.isOpen) {
-                    controller.close();
-                  } else {
-                    controller.open();
-                  }
-                },
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          widget.activeProvider.name,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.black.withValues(alpha: 0.85),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
+            builder:
+                (
+                  BuildContext context,
+                  MenuController controller,
+                  Widget? child,
+                ) {
+                  return InkWell(
+                    onTap: () {
+                      if (controller.isOpen) {
+                        controller.close();
+                      } else {
+                        controller.open();
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              widget.activeProvider.name,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.black.withValues(alpha: 0.85),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.keyboard_arrow_down,
+                            size: 18,
+                            color: Colors.black.withValues(alpha: 0.4),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 4),
-                      Icon(
-                        Icons.keyboard_arrow_down,
-                        size: 18,
-                        color: Colors.black.withValues(alpha: 0.4),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
+                    ),
+                  );
+                },
             menuChildren: widget.allProviders
                 .map(
                   (p) => MenuItemButton(
@@ -445,11 +444,9 @@ class _DashboardViewState extends State<DashboardView> {
                 color: Colors.black.withValues(alpha: 0.35),
               ),
               onPressed: () async {
-                await Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const SettingsView(),
-                  ),
-                );
+                await Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const SettingsView()));
                 widget.onRefreshRequested();
               },
               padding: EdgeInsets.zero,
@@ -462,7 +459,7 @@ class _DashboardViewState extends State<DashboardView> {
                 size: 16,
                 color: Colors.black.withValues(alpha: 0.35),
               ),
-              onPressed: _refreshData,
+              onPressed: widget.onRefresh,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
               tooltip: AppLocalizations.of('refresh'),
@@ -514,9 +511,12 @@ class _DashboardViewState extends State<DashboardView> {
                   ),
                   const SizedBox(height: 12),
                   TextButton.icon(
-                    onPressed: _refreshData,
-                    icon: Icon(Icons.refresh_rounded, size: 14,
-                        color: Colors.black.withValues(alpha: 0.5)),
+                    onPressed: widget.onRefresh,
+                    icon: Icon(
+                      Icons.refresh_rounded,
+                      size: 14,
+                      color: Colors.black.withValues(alpha: 0.5),
+                    ),
                     label: Text(
                       AppLocalizations.of('refresh'),
                       style: TextStyle(
@@ -527,7 +527,9 @@ class _DashboardViewState extends State<DashboardView> {
                     style: TextButton.styleFrom(
                       backgroundColor: Colors.black.withValues(alpha: 0.04),
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -587,10 +589,10 @@ class _DashboardViewState extends State<DashboardView> {
                       const SizedBox(height: 4),
                       Text(
                         AppLocalizations.of('tokens_in_out', {
-                          'in_tokens':
-                              (item.promptTokens / 1000).toStringAsFixed(0),
-                          'out_tokens':
-                              (item.completionTokens / 1000).toStringAsFixed(0),
+                          'in_tokens': (item.promptTokens / 1000)
+                              .toStringAsFixed(0),
+                          'out_tokens': (item.completionTokens / 1000)
+                              .toStringAsFixed(0),
                         }),
                         style: TextStyle(
                           fontSize: 10,
@@ -615,5 +617,4 @@ class _DashboardViewState extends State<DashboardView> {
       },
     );
   }
-
 }

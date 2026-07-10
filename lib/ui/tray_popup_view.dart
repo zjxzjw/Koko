@@ -3,16 +3,19 @@ import 'package:window_manager/window_manager.dart';
 
 import '../i18n/app_localizations.dart';
 import '../models/provider_model.dart';
-import '../services/api_service.dart';
 
 class TrayPopupView extends StatefulWidget {
   final ProviderConfig activeProvider;
+  final Future<BalanceResult>? balanceFuture;
   final VoidCallback onOpenFullWindow;
+  final Color balanceColor;
 
   const TrayPopupView({
     super.key,
     required this.activeProvider,
+    required this.balanceFuture,
     required this.onOpenFullWindow,
+    required this.balanceColor,
   });
 
   @override
@@ -20,36 +23,25 @@ class TrayPopupView extends StatefulWidget {
 }
 
 class _TrayPopupViewState extends State<TrayPopupView> {
-  late Future<BalanceResult> _balanceFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _refresh();
-  }
-
-  @override
-  void didUpdateWidget(covariant TrayPopupView oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.activeProvider.id != widget.activeProvider.id) {
-      _refresh();
-    }
-  }
-
-  void _refresh() {
-    setState(() {
-      _balanceFuture = ApiService.fetchBalance(widget.activeProvider);
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: FutureBuilder<BalanceResult>(
-        future: _balanceFuture,
+        future: widget.balanceFuture,
         builder: (context, snapshot) {
           final data = snapshot.data;
+
+          if (widget.balanceFuture == null) {
+            return const Center(
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            );
+          }
+
           return Container(
             width: double.infinity,
             height: double.infinity,
@@ -128,7 +120,7 @@ class _TrayPopupViewState extends State<TrayPopupView> {
                     style: TextStyle(
                       fontSize: 30,
                       fontWeight: FontWeight.w300,
-                      color: Colors.black.withValues(alpha: 0.85),
+                      color: widget.balanceColor,
                       letterSpacing: -0.5,
                     ),
                   ),

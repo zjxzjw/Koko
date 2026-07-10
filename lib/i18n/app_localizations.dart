@@ -66,6 +66,13 @@ class AppLocalizations {
     'balance_monitor': 'KOKO \u2014 LLM Balance Monitor',
     'balance_monitor_long':
         '{name}\nRemaining: {symbol}{remaining}\nUsed: {symbol}{used}',
+    'auto_refresh': 'Auto Refresh',
+    'off': 'Off',
+    'every_10m': 'Every 10 min',
+    'every_30m': 'Every 30 min',
+    'every_60m': 'Every 60 min',
+    'min_balance': 'Min Balance',
+    'hint_min_balance': 'e.g. 10.00 (optional)',
   };
 
   static const Map<String, String> _zh = {
@@ -112,5 +119,12 @@ class AppLocalizations {
     'balance_monitor': 'KOKO \u2014 LLM 余额监控',
     'balance_monitor_long':
         '{name}\n剩余：{symbol}{remaining}\n已用：{symbol}{used}',
+    'auto_refresh': '自动刷新',
+    'off': '关闭',
+    'every_10m': '每 10 分钟',
+    'every_30m': '每 30 分钟',
+    'every_60m': '每 60 分钟',
+    'min_balance': '最低余额',
+    'hint_min_balance': '例如 10.00（可选）',
   };
 }

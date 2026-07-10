@@ -18,6 +18,7 @@ class _SettingsViewState extends State<SettingsView> {
   final _nameController = TextEditingController();
   final _urlController = TextEditingController();
   final _keyController = TextEditingController();
+  final _minBalanceController = TextEditingController();
 
   @override
   void initState() {
@@ -30,6 +31,7 @@ class _SettingsViewState extends State<SettingsView> {
     _nameController.dispose();
     _urlController.dispose();
     _keyController.dispose();
+    _minBalanceController.dispose();
     super.dispose();
   }
 
@@ -101,83 +103,252 @@ class _SettingsViewState extends State<SettingsView> {
       _nameController.text = existing.name;
       _urlController.text = existing.baseUrl;
       _keyController.text = existing.apiKey;
+      _minBalanceController.text = existing.minBalance?.toStringAsFixed(2) ?? '';
     } else {
       _nameController.clear();
       _urlController.clear();
       _keyController.clear();
+      _minBalanceController.clear();
     }
+
+    int refreshInterval = existing?.refreshIntervalMinutes ?? 0;
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(12))),
-        title: Text(
-          existing == null
-              ? AppLocalizations.of('add_provider')
-              : AppLocalizations.of('edit_provider'),
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.black.withValues(alpha: 0.85),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: Colors.white,
+          shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(12))),
+          title: Text(
+            existing == null
+                ? AppLocalizations.of('add_provider')
+                : AppLocalizations.of('edit_provider'),
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.black.withValues(alpha: 0.85),
+            ),
           ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildField(
-                AppLocalizations.of('name'), _nameController,
-                hint: AppLocalizations.of('hint_name')),
-            const SizedBox(height: 12),
-            _buildField(
-                AppLocalizations.of('base_url'), _urlController,
-                hint: AppLocalizations.of('hint_url')),
-            const SizedBox(height: 12),
-            _buildField(
-                AppLocalizations.of('api_key'), _keyController,
-                hint: AppLocalizations.of('hint_key'), obscure: true),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildField(
+                  AppLocalizations.of('name'), _nameController,
+                  hint: AppLocalizations.of('hint_name')),
+              const SizedBox(height: 12),
+              _buildField(
+                  AppLocalizations.of('base_url'), _urlController,
+                  hint: AppLocalizations.of('hint_url')),
+              const SizedBox(height: 12),
+              _buildField(
+                  AppLocalizations.of('api_key'), _keyController,
+                  hint: AppLocalizations.of('hint_key'), obscure: true),
+              const SizedBox(height: 12),
+              _buildField(
+                  AppLocalizations.of('min_balance'), _minBalanceController,
+                  hint: AppLocalizations.of('hint_min_balance')),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Text(
+                    AppLocalizations.of('auto_refresh'),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.black.withValues(alpha: 0.45),
+                    ),
+                  ),
+                  const Spacer(),
+                  MenuAnchor(
+                    alignmentOffset: const Offset(0, 4),
+                    style: MenuStyle(
+                      shape: WidgetStateProperty.all(
+                        RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      padding: WidgetStateProperty.all(EdgeInsets.zero),
+                      backgroundColor: WidgetStateProperty.all(Colors.white),
+                      elevation: WidgetStateProperty.all(4),
+                    ),
+                    builder: (context, controller, child) {
+                      final label = switch (refreshInterval) {
+                        10 => '10 min',
+                        30 => '30 min',
+                        60 => '60 min',
+                        _ => 'Off',
+                      };
+                      return InkWell(
+                        onTap: () {
+                          if (controller.isOpen) {
+                            controller.close();
+                          } else {
+                            controller.open();
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                label,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.black.withValues(alpha: 0.85),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.keyboard_arrow_down,
+                                size: 18,
+                                color: Colors.black.withValues(alpha: 0.4),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                    menuChildren: [
+                      MenuItemButton(
+                        onPressed: () => setDialogState(() => refreshInterval = 0),
+                        style: MenuItemButton.styleFrom(
+                          minimumSize: const Size(100, 32),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                        ),
+                        child: Text(
+                          'Off',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: refreshInterval == 0
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                          ),
+                        ),
+                      ),
+                      MenuItemButton(
+                        onPressed: () => setDialogState(() => refreshInterval = 10),
+                        style: MenuItemButton.styleFrom(
+                          minimumSize: const Size(100, 32),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                        ),
+                        child: Text(
+                          '10 min',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: refreshInterval == 10
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                          ),
+                        ),
+                      ),
+                      MenuItemButton(
+                        onPressed: () => setDialogState(() => refreshInterval = 30),
+                        style: MenuItemButton.styleFrom(
+                          minimumSize: const Size(100, 32),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                        ),
+                        child: Text(
+                          '30 min',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: refreshInterval == 30
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                          ),
+                        ),
+                      ),
+                      MenuItemButton(
+                        onPressed: () => setDialogState(() => refreshInterval = 60),
+                        style: MenuItemButton.styleFrom(
+                          minimumSize: const Size(100, 32),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                        ),
+                        child: Text(
+                          '60 min',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: refreshInterval == 60
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(
+                AppLocalizations.of('cancel'),
+                style: TextStyle(color: Colors.black.withValues(alpha: 0.55)),
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                final name = _nameController.text.trim();
+                final url = _urlController.text.trim();
+                final key = _keyController.text.trim();
+                if (name.isEmpty || url.isEmpty || key.isEmpty) return;
+
+                final minBalText = _minBalanceController.text.trim();
+                final minBalance = minBalText.isEmpty
+                    ? null
+                    : double.tryParse(minBalText);
+
+                if (existing != null) {
+                  existing.name = name;
+                  existing.baseUrl = url;
+                  existing.apiKey = key;
+                  existing.refreshIntervalMinutes = refreshInterval;
+                  existing.minBalance = minBalance;
+                } else {
+                  _providers.add(
+                    ProviderConfig(
+                      id: DateTime.now().millisecondsSinceEpoch.toString(),
+                      name: name,
+                      baseUrl: url,
+                      apiKey: key,
+                      refreshIntervalMinutes: refreshInterval,
+                      minBalance: minBalance,
+                    ),
+                  );
+                }
+                final nav = Navigator.of(ctx);
+                await StorageService.saveProviders(_providers);
+                nav.pop();
+                _loadData();
+              },
+              child: Text(
+                AppLocalizations.of('save'),
+                style: TextStyle(color: Colors.black.withValues(alpha: 0.85)),
+              ),
+            ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(
-              AppLocalizations.of('cancel'),
-              style: TextStyle(color: Colors.black.withValues(alpha: 0.55)),
-            ),
-          ),
-          TextButton(
-            onPressed: () async {
-              final name = _nameController.text.trim();
-              final url = _urlController.text.trim();
-              final key = _keyController.text.trim();
-              if (name.isEmpty || url.isEmpty || key.isEmpty) return;
-
-              if (existing != null) {
-                existing.name = name;
-                existing.baseUrl = url;
-                existing.apiKey = key;
-              } else {
-                _providers.add(
-                  ProviderConfig(
-                    id: DateTime.now().millisecondsSinceEpoch.toString(),
-                    name: name,
-                    baseUrl: url,
-                    apiKey: key,
-                  ),
-                );
-              }
-              final nav = Navigator.of(ctx);
-              await StorageService.saveProviders(_providers);
-              nav.pop();
-              _loadData();
-            },
-            child: Text(
-              AppLocalizations.of('save'),
-              style: TextStyle(color: Colors.black.withValues(alpha: 0.85)),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -244,11 +415,14 @@ class _SettingsViewState extends State<SettingsView> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
+        actionsPadding: const EdgeInsets.only(right: 16),
         iconTheme: IconThemeData(color: Colors.black.withValues(alpha: 0.6)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.add),
+            icon: Icon(Icons.add, size: 24, color: Colors.black.withValues(alpha: 0.45)),
             onPressed: () => _showEditor(),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
           ),
         ],
       ),
