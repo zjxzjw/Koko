@@ -5,6 +5,8 @@ import 'package:window_manager/window_manager.dart';
 import '../i18n/app_localizations.dart';
 import '../models/provider_model.dart';
 import '../services/storage_service.dart';
+import 'app_theme.dart';
+import 'balance_future_builder.dart';
 import 'settings_view.dart';
 
 class DashboardView extends StatefulWidget {
@@ -47,133 +49,123 @@ class _DashboardViewState extends State<DashboardView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: FutureBuilder<BalanceResult>(
+      body: BalanceFutureBuilder(
         future: widget.balanceFuture,
-        builder: (context, snapshot) {
-          final data = snapshot.data;
-          final error = snapshot.error;
-
-          if (widget.balanceFuture == null) {
-            return const Center(
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            );
-          }
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _buildHeader(data, error),
-              ),
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  AppLocalizations.of('remaining_balance'),
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.black.withValues(alpha: 0.35),
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.1,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 2),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  data != null
-                      ? '${data.currencySymbol} ${data.remaining.toStringAsFixed(2)}'
-                      : '--.--',
-                  style: TextStyle(
-                    fontSize: 34,
-                    fontWeight: FontWeight.w300,
-                    color: widget.balanceColor,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-              ),
-              if (data != null) ...[
-                const SizedBox(height: 2),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    AppLocalizations.of('used_total', {
-                      'symbol': data.currencySymbol,
-                      'used': data.used.toStringAsFixed(2),
-                      'total': data.total.toStringAsFixed(2),
-                    }),
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.black.withValues(alpha: 0.35),
-                    ),
-                  ),
-                ),
-              ],
-              if (data != null) ...[
-                const SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      _chartLabel(AppLocalizations.of('daily_cost')),
-                      const Spacer(),
-                      _chartChip(
-                        AppLocalizations.of('cost'),
-                        '${data.currencySymbol} ${data.used.toStringAsFixed(2)}',
-                        const Color(0xFF3B82F6),
-                      ),
-                      const SizedBox(width: 12),
-                      _chartChip(
-                        AppLocalizations.of('tokens'),
-                        _fmtTokens(
-                          data.daily.fold<int>(0, (s, d) => s + d.tokens),
-                        ),
-                        const Color(0xFF10B981),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: 140,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _buildChart(data),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  AppLocalizations.of('model_breakdown'),
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.black.withValues(alpha: 0.35),
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.1,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: _buildUsageList(
-                  data,
-                  error,
-                  data?.currencySymbol ?? '\$',
-                ),
-              ),
-            ],
-          );
-        },
+        builder: (context, data) => _buildContent(data, null),
+        errorBuilder: (context, error) => _buildContent(null, error),
       ),
+    );
+  }
+
+  Widget _buildContent(BalanceResult? data, Object? error) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: _buildHeader(data, error),
+        ),
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            AppLocalizations.of('remaining_balance'),
+            style: TextStyle(
+              fontSize: 10,
+              color: AppColors.dimText,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.1,
+            ),
+          ),
+        ),
+        const SizedBox(height: 2),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            data != null
+                ? '${data.currencySymbol} ${data.remaining.toStringAsFixed(2)}'
+                : '--.--',
+            style: TextStyle(
+              fontSize: 34,
+              fontWeight: FontWeight.w300,
+              color: widget.balanceColor,
+              letterSpacing: -0.5,
+            ),
+          ),
+        ),
+        if (data != null) ...[
+          const SizedBox(height: 2),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              AppLocalizations.of('used_total', {
+                'symbol': data.currencySymbol,
+                'used': data.used.toStringAsFixed(2),
+                'total': data.total.toStringAsFixed(2),
+              }),
+              style: TextStyle(
+                fontSize: 11,
+                color: AppColors.text(0.35),
+              ),
+            ),
+          ),
+        ],
+        if (data != null) ...[
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                _chartLabel(AppLocalizations.of('daily_cost')),
+                const Spacer(),
+                _chartChip(
+                  AppLocalizations.of('cost'),
+                  '${data.currencySymbol} ${data.used.toStringAsFixed(2)}',
+                  const Color(0xFF3B82F6),
+                ),
+                const SizedBox(width: 12),
+                _chartChip(
+                  AppLocalizations.of('tokens'),
+                  _fmtTokens(
+                    data.daily.fold<int>(0, (s, d) => s + d.tokens),
+                  ),
+                  const Color(0xFF10B981),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 140,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _buildChart(data),
+            ),
+          ),
+        ],
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            AppLocalizations.of('model_breakdown'),
+            style: TextStyle(
+              fontSize: 10,
+              color: AppColors.dimText,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.1,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: _buildUsageList(
+            data,
+            error,
+            data?.currencySymbol ?? '\$',
+          ),
+        ),
+      ],
     );
   }
 
@@ -232,7 +224,7 @@ class _DashboardViewState extends State<DashboardView> {
                 v == 0 ? '' : '${data.currencySymbol} ${v.toStringAsFixed(0)}',
                 style: TextStyle(
                   fontSize: 8,
-                  color: Colors.black.withValues(alpha: 0.3),
+                  color: AppColors.text(0.3),
                 ),
               ),
             ),
@@ -253,7 +245,7 @@ class _DashboardViewState extends State<DashboardView> {
                     '${daily[idx].date.day}',
                     style: TextStyle(
                       fontSize: 8,
-                      color: Colors.black.withValues(alpha: 0.3),
+                      color: AppColors.text(0.3),
                     ),
                   ),
                 );
@@ -266,7 +258,7 @@ class _DashboardViewState extends State<DashboardView> {
           drawVerticalLine: false,
           horizontalInterval: (maxCost / 4).clamp(0.01, double.infinity),
           getDrawingHorizontalLine: (_) => FlLine(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: AppColors.text(0.05),
             strokeWidth: 1,
           ),
         ),
@@ -282,8 +274,8 @@ class _DashboardViewState extends State<DashboardView> {
                   top: Radius.circular(3),
                 ),
                 color: daily[i].cost > 0
-                    ? const Color(0xFF3B82F6)
-                    : Colors.black.withValues(alpha: 0.12),
+                    ? AppColors.chartBlue
+                    : AppColors.border(0.12),
               ),
             ],
           );
@@ -297,7 +289,7 @@ class _DashboardViewState extends State<DashboardView> {
     style: TextStyle(
       fontSize: 11,
       fontWeight: FontWeight.w600,
-      color: Colors.black.withValues(alpha: 0.55),
+      color: AppColors.secondaryText,
     ),
   );
 
@@ -317,7 +309,7 @@ class _DashboardViewState extends State<DashboardView> {
         '$label $value',
         style: TextStyle(
           fontSize: 10,
-          color: Colors.black.withValues(alpha: 0.45),
+          color: AppColors.mutedText,
         ),
       ),
     ],
@@ -336,7 +328,7 @@ class _DashboardViewState extends State<DashboardView> {
         Container(
           constraints: const BoxConstraints(maxWidth: 220),
           decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: AppColors.hoverBg,
             borderRadius: BorderRadius.circular(8),
           ),
           child: MenuAnchor(
@@ -377,7 +369,7 @@ class _DashboardViewState extends State<DashboardView> {
                               widget.activeProvider.name,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: Colors.black.withValues(alpha: 0.85),
+                                color: AppColors.primaryText,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -387,7 +379,7 @@ class _DashboardViewState extends State<DashboardView> {
                           Icon(
                             Icons.keyboard_arrow_down,
                             size: 18,
-                            color: Colors.black.withValues(alpha: 0.4),
+                            color: AppColors.accentText,
                           ),
                         ],
                       ),
@@ -432,7 +424,7 @@ class _DashboardViewState extends State<DashboardView> {
                 width: 6,
                 height: 6,
                 decoration: const BoxDecoration(
-                  color: Color(0xFF34C759),
+                  color: AppColors.statusGreen,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -441,7 +433,7 @@ class _DashboardViewState extends State<DashboardView> {
               icon: Icon(
                 Icons.settings_outlined,
                 size: 16,
-                color: Colors.black.withValues(alpha: 0.35),
+                color: AppColors.text(0.35),
               ),
               onPressed: () async {
                 await Navigator.of(
@@ -457,7 +449,7 @@ class _DashboardViewState extends State<DashboardView> {
               icon: Icon(
                 Icons.refresh_rounded,
                 size: 16,
-                color: Colors.black.withValues(alpha: 0.35),
+                color: AppColors.text(0.35),
               ),
               onPressed: widget.onRefresh,
               padding: EdgeInsets.zero,
@@ -468,7 +460,7 @@ class _DashboardViewState extends State<DashboardView> {
               icon: Icon(
                 Icons.close_rounded,
                 size: 16,
-                color: Colors.black.withValues(alpha: 0.25),
+                color: AppColors.faintText,
               ),
               onPressed: () => windowManager.hide(),
               padding: EdgeInsets.zero,
@@ -491,14 +483,14 @@ class _DashboardViewState extends State<DashboardView> {
                   Icon(
                     Icons.cloud_off,
                     size: 28,
-                    color: Colors.black.withValues(alpha: 0.25),
+                    color: AppColors.faintText,
                   ),
                   const SizedBox(height: 8),
                   Text(
                     AppLocalizations.of('api_unreachable'),
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.black.withValues(alpha: 0.45),
+                      color: AppColors.mutedText,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -506,7 +498,7 @@ class _DashboardViewState extends State<DashboardView> {
                     AppLocalizations.of('check_network'),
                     style: TextStyle(
                       fontSize: 11,
-                      color: Colors.black.withValues(alpha: 0.25),
+                      color: AppColors.faintText,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -515,17 +507,17 @@ class _DashboardViewState extends State<DashboardView> {
                     icon: Icon(
                       Icons.refresh_rounded,
                       size: 14,
-                      color: Colors.black.withValues(alpha: 0.5),
+                      color: AppColors.text(0.5),
                     ),
                     label: Text(
                       AppLocalizations.of('refresh'),
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.black.withValues(alpha: 0.5),
+                        color: AppColors.text(0.5),
                       ),
                     ),
                     style: TextButton.styleFrom(
-                      backgroundColor: Colors.black.withValues(alpha: 0.04),
+                      backgroundColor: AppColors.hoverBg,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 6,
@@ -551,7 +543,7 @@ class _DashboardViewState extends State<DashboardView> {
           AppLocalizations.of('no_data'),
           style: TextStyle(
             fontSize: 13,
-            color: Colors.black.withValues(alpha: 0.35),
+            color: AppColors.text(0.35),
           ),
         ),
       );
@@ -567,7 +559,7 @@ class _DashboardViewState extends State<DashboardView> {
         return Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: AppColors.cardBg,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -581,7 +573,7 @@ class _DashboardViewState extends State<DashboardView> {
                       item.modelName,
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.black.withValues(alpha: 0.8),
+                        color: AppColors.text(0.8),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -596,7 +588,7 @@ class _DashboardViewState extends State<DashboardView> {
                         }),
                         style: TextStyle(
                           fontSize: 10,
-                          color: Colors.black.withValues(alpha: 0.35),
+                          color: AppColors.text(0.35),
                         ),
                       ),
                     ],
@@ -608,7 +600,7 @@ class _DashboardViewState extends State<DashboardView> {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: Colors.black.withValues(alpha: 0.55),
+                  color: AppColors.secondaryText,
                 ),
               ),
             ],

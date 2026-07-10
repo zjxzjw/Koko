@@ -22,18 +22,23 @@ class ApiService {
       'Accept': 'application/json',
     };
 
-    if (base.contains('deepseek.com')) return _fetchDeepSeek(base, headers);
+    if (base.contains('deepseek.com')) {
+      return _fetchDeepSeek(base, headers,
+          customBalancePath: config.customBalancePath);
+    }
     if (base.contains('openai.com')) return _fetchOpenAI(base, headers);
 
-    final r = await _tryDeepSeekStyle(base, headers);
+    final r = await _tryDeepSeekStyle(base, headers,
+        customBalancePath: config.customBalancePath);
     if (r != null) return r;
     return _tryOpenAIStyle(base, headers);
   }
 
   static Future<BalanceResult> _fetchDeepSeek(
     String base,
-    Map<String, String> headers,
-  ) async {
+    Map<String, String> headers, {
+    String? customBalancePath,
+  }) async {
     // 1. Balance
     final balUrl = '$base/user/balance';
     final balRes = await _dio.get(balUrl, options: Options(headers: headers));
@@ -72,12 +77,16 @@ class ApiService {
     final modelAgg = <String, _DayAgg>{};
     Map<String, dynamic>? uData;
 
-    for (final path in [
-      '/v1/usage/metrics',
-      '/v1/usage',
-      '/v1/metrics',
-      '/usage',
-    ]) {
+    final probePaths = customBalancePath != null
+        ? [customBalancePath]
+        : [
+            '/v1/usage/metrics',
+            '/v1/usage',
+            '/v1/metrics',
+            '/usage',
+          ];
+
+    final futures = probePaths.map((path) async {
       final usageUrl =
           '$base$path'
           '?start_time=$startDate&end_time=$endDate';
@@ -87,13 +96,21 @@ class ApiService {
           options: Options(headers: headers),
         );
         if (uRes.statusCode == 200 && uRes.data is Map) {
-          uData = uRes.data as Map<String, dynamic>;
-          debugPrint('   Body: ${_truncate(uData)}');
-          break;
+          return uRes.data as Map<String, dynamic>;
         }
       } catch (e) {
-        debugPrint('   ← error: $e');
+        debugPrint('   ← path $path error: $e');
       }
+      return null;
+    }).toList();
+
+    final results = await Future.wait(futures);
+    uData = results.cast<Map<String, dynamic>?>().firstWhere(
+      (r) => r != null,
+      orElse: () => null,
+    );
+    if (uData != null) {
+      debugPrint('   Body: ${_truncate(uData)}');
     }
 
     if (uData != null) {
@@ -193,10 +210,12 @@ class ApiService {
 
   static Future<BalanceResult?> _tryDeepSeekStyle(
     String base,
-    Map<String, String> headers,
-  ) async {
+    Map<String, String> headers, {
+    String? customBalancePath,
+  }) async {
     try {
-      return await _fetchDeepSeek(base, headers);
+      return await _fetchDeepSeek(base, headers,
+          customBalancePath: customBalancePath);
     } catch (_) {
       return null;
     }

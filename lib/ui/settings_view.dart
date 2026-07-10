@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../i18n/app_localizations.dart';
 import '../models/provider_model.dart';
 import '../services/storage_service.dart';
+import 'app_theme.dart';
 
 class SettingsView extends StatefulWidget {
   const SettingsView({super.key});
@@ -62,14 +63,14 @@ class _SettingsViewState extends State<SettingsView> {
           AppLocalizations.of('remove_provider'),
           style: TextStyle(
             fontSize: 14,
-            color: Colors.black.withValues(alpha: 0.85),
+            color: AppColors.primaryText,
           ),
         ),
         content: Text(
           AppLocalizations.of('delete_confirm', {'name': p.name}),
           style: TextStyle(
             fontSize: 12,
-            color: Colors.black.withValues(alpha: 0.4),
+            color: AppColors.text(0.4),
           ),
         ),
         actions: [
@@ -77,14 +78,14 @@ class _SettingsViewState extends State<SettingsView> {
             onPressed: () => Navigator.pop(ctx, false),
             child: Text(
               AppLocalizations.of('cancel'),
-              style: TextStyle(color: Colors.black.withValues(alpha: 0.55)),
+              style: TextStyle(color: AppColors.secondaryText),
             ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: Colors.redAccent),
+            child: Text(
+              AppLocalizations.of('delete'),
+              style: const TextStyle(color: Colors.redAccent),
             ),
           ),
         ],
@@ -126,7 +127,7 @@ class _SettingsViewState extends State<SettingsView> {
                 : AppLocalizations.of('edit_provider'),
             style: TextStyle(
               fontSize: 14,
-              color: Colors.black.withValues(alpha: 0.85),
+              color: AppColors.primaryText,
             ),
           ),
           content: Column(
@@ -154,7 +155,7 @@ class _SettingsViewState extends State<SettingsView> {
                     AppLocalizations.of('auto_refresh'),
                     style: TextStyle(
                       fontSize: 11,
-                      color: Colors.black.withValues(alpha: 0.45),
+                      color: AppColors.mutedText,
                     ),
                   ),
                   const Spacer(),
@@ -172,10 +173,10 @@ class _SettingsViewState extends State<SettingsView> {
                     ),
                     builder: (context, controller, child) {
                       final label = switch (refreshInterval) {
-                        10 => '10 min',
-                        30 => '30 min',
-                        60 => '60 min',
-                        _ => 'Off',
+                        10 => AppLocalizations.of('every_10m'),
+                        30 => AppLocalizations.of('every_30m'),
+                        60 => AppLocalizations.of('every_60m'),
+                        _ => AppLocalizations.of('off'),
                       };
                       return InkWell(
                         onTap: () {
@@ -192,7 +193,7 @@ class _SettingsViewState extends State<SettingsView> {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.04),
+                            color: AppColors.hoverBg,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(
@@ -202,14 +203,14 @@ class _SettingsViewState extends State<SettingsView> {
                                 label,
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: Colors.black.withValues(alpha: 0.85),
+                                  color: AppColors.primaryText,
                                 ),
                               ),
                               const SizedBox(width: 4),
                               Icon(
                                 Icons.keyboard_arrow_down,
                                 size: 18,
-                                color: Colors.black.withValues(alpha: 0.4),
+                                color: AppColors.accentText,
                               ),
                             ],
                           ),
@@ -227,7 +228,7 @@ class _SettingsViewState extends State<SettingsView> {
                           ),
                         ),
                         child: Text(
-                          'Off',
+                          AppLocalizations.of('off'),
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: refreshInterval == 0
@@ -246,7 +247,7 @@ class _SettingsViewState extends State<SettingsView> {
                           ),
                         ),
                         child: Text(
-                          '10 min',
+                          AppLocalizations.of('every_10m'),
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: refreshInterval == 10
@@ -265,7 +266,7 @@ class _SettingsViewState extends State<SettingsView> {
                           ),
                         ),
                         child: Text(
-                          '30 min',
+                          AppLocalizations.of('every_30m'),
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: refreshInterval == 30
@@ -284,7 +285,7 @@ class _SettingsViewState extends State<SettingsView> {
                           ),
                         ),
                         child: Text(
-                          '60 min',
+                          AppLocalizations.of('every_60m'),
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: refreshInterval == 60
@@ -304,7 +305,7 @@ class _SettingsViewState extends State<SettingsView> {
               onPressed: () => Navigator.pop(ctx),
               child: Text(
                 AppLocalizations.of('cancel'),
-                style: TextStyle(color: Colors.black.withValues(alpha: 0.55)),
+                style: TextStyle(color: AppColors.secondaryText),
               ),
             ),
             TextButton(
@@ -320,15 +321,20 @@ class _SettingsViewState extends State<SettingsView> {
                     : double.tryParse(minBalText);
 
                 if (existing != null) {
-                  existing.name = name;
-                  existing.baseUrl = url;
-                  existing.apiKey = key;
-                  existing.refreshIntervalMinutes = refreshInterval;
-                  existing.minBalance = minBalance;
+                  final index = _providers.indexWhere((p) => p.id == existing.id);
+                  if (index != -1) {
+                    _providers[index] = existing.copyWith(
+                      name: name,
+                      baseUrl: url,
+                      apiKey: key,
+                      refreshIntervalMinutes: refreshInterval,
+                      minBalance: minBalance,
+                    );
+                  }
                 } else {
                   _providers.add(
                     ProviderConfig(
-                      id: DateTime.now().millisecondsSinceEpoch.toString(),
+                      id: ProviderConfig.generateId(),
                       name: name,
                       baseUrl: url,
                       apiKey: key,
@@ -344,7 +350,7 @@ class _SettingsViewState extends State<SettingsView> {
               },
               child: Text(
                 AppLocalizations.of('save'),
-                style: TextStyle(color: Colors.black.withValues(alpha: 0.85)),
+                style: TextStyle(color: AppColors.primaryText),
               ),
             ),
           ],
@@ -359,27 +365,27 @@ class _SettingsViewState extends State<SettingsView> {
     String? hint,
     bool obscure = false,
   }) {
-    final borderColor = Colors.black.withValues(alpha: 0.12);
+    final borderColor = AppColors.border(0.12);
     return TextField(
       controller: controller,
       obscureText: obscure,
       style: TextStyle(
         fontSize: 13,
-        color: Colors.black.withValues(alpha: 0.85),
+        color: AppColors.primaryText,
       ),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         labelStyle: TextStyle(
           fontSize: 11,
-          color: Colors.black.withValues(alpha: 0.4),
+          color: AppColors.text(0.4),
         ),
         hintStyle: TextStyle(
           fontSize: 12,
-          color: Colors.black.withValues(alpha: 0.2),
+          color: AppColors.faintText,
         ),
         filled: true,
-        fillColor: Colors.black.withValues(alpha: 0.02),
+        fillColor: AppColors.surface(0.02),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(8)),
           borderSide: BorderSide(color: borderColor),
@@ -390,7 +396,7 @@ class _SettingsViewState extends State<SettingsView> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(8)),
-          borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.35)),
+          borderSide: BorderSide(color: AppColors.border(0.35)),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 12,
@@ -409,17 +415,17 @@ class _SettingsViewState extends State<SettingsView> {
           AppLocalizations.of('settings'),
           style: TextStyle(
             fontSize: 14,
-            color: Colors.black.withValues(alpha: 0.85),
+            color: AppColors.primaryText,
           ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
         actionsPadding: const EdgeInsets.only(right: 16),
-        iconTheme: IconThemeData(color: Colors.black.withValues(alpha: 0.6)),
+        iconTheme: IconThemeData(color: AppColors.text(0.6)),
         actions: [
           IconButton(
-            icon: Icon(Icons.add, size: 24, color: Colors.black.withValues(alpha: 0.45)),
+            icon: Icon(Icons.add, size: 24, color: AppColors.text(0.45)),
             onPressed: () => _showEditor(),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
@@ -450,14 +456,14 @@ class _SettingsViewState extends State<SettingsView> {
                               Icon(
                                 Icons.dns_outlined,
                                 size: 36,
-                                color: Colors.black.withValues(alpha: 0.2),
+                                color: AppColors.subtleText,
                               ),
                               const SizedBox(height: 12),
                               Text(
                                 AppLocalizations.of('no_providers'),
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: Colors.black.withValues(alpha: 0.45),
+                                  color: AppColors.mutedText,
                                 ),
                               ),
                               const SizedBox(height: 16),
@@ -467,10 +473,8 @@ class _SettingsViewState extends State<SettingsView> {
                                 label: Text(
                                     AppLocalizations.of('add_first')),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                      Colors.black.withValues(alpha: 0.06),
-                                  foregroundColor:
-                                      Colors.black.withValues(alpha: 0.75),
+                                  backgroundColor: AppColors.overlayBg,
+                                  foregroundColor: AppColors.text(0.75),
                                 ),
                               ),
                             ],
@@ -484,14 +488,14 @@ class _SettingsViewState extends State<SettingsView> {
                               title: Text(
                                 p.name,
                                 style: TextStyle(
-                                  color: Colors.black.withValues(alpha: 0.85),
+                                  color: AppColors.primaryText,
                                   fontSize: 13,
                                 ),
                               ),
                               subtitle: Text(
                                 p.baseUrl,
                                 style: TextStyle(
-                                  color: Colors.black.withValues(alpha: 0.4),
+                                  color: AppColors.text(0.4),
                                   fontSize: 11,
                                 ),
                                 overflow: TextOverflow.ellipsis,
@@ -503,7 +507,7 @@ class _SettingsViewState extends State<SettingsView> {
                                     icon: Icon(
                                       Icons.edit_outlined,
                                       size: 16,
-                                      color: Colors.black.withValues(alpha: 0.4),
+                                      color: AppColors.text(0.4),
                                     ),
                                     onPressed: () => _showEditor(existing: p),
                                   ),
@@ -532,13 +536,13 @@ class _SettingsViewState extends State<SettingsView> {
       child: Row(
         children: [
           Icon(Icons.language_outlined,
-              size: 16, color: Colors.black.withValues(alpha: 0.45)),
+              size: 16, color: AppColors.mutedText),
           const SizedBox(width: 8),
           Text(
             AppLocalizations.of('language'),
             style: TextStyle(
               fontSize: 13,
-              color: Colors.black.withValues(alpha: 0.7),
+              color: AppColors.text(0.7),
             ),
           ),
           const Spacer(),
@@ -571,7 +575,7 @@ class _SettingsViewState extends State<SettingsView> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.04),
+                    color: AppColors.hoverBg,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
@@ -581,14 +585,14 @@ class _SettingsViewState extends State<SettingsView> {
                         _localeCode == 'en' ? 'English' : '中文',
                         style: TextStyle(
                           fontSize: 13,
-                          color: Colors.black.withValues(alpha: 0.85),
+                          color: AppColors.primaryText,
                         ),
                       ),
                       const SizedBox(width: 4),
                       Icon(
                         Icons.keyboard_arrow_down,
                         size: 18,
-                        color: Colors.black.withValues(alpha: 0.4),
+                        color: AppColors.accentText,
                       ),
                     ],
                   ),
@@ -648,7 +652,7 @@ class _SettingsViewState extends State<SettingsView> {
         title,
         style: TextStyle(
           fontSize: 10,
-          color: Colors.black.withValues(alpha: 0.35),
+          color: AppColors.dimText,
           fontWeight: FontWeight.w600,
           letterSpacing: 1.1,
         ),

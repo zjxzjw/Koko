@@ -7,14 +7,17 @@ class StorageService {
   static const String _keySelected = 'selected_provider_id';
   static const String _keyLocale = 'app_locale';
 
+  static final Future<SharedPreferences> _prefs =
+      SharedPreferences.getInstance();
+
   static Future<void> saveProviders(List<ProviderConfig> providers) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _prefs;
     final data = providers.map((p) => p.toMap()).toList();
     await prefs.setString(_keyProviders, jsonEncode(data));
   }
 
   static Future<List<ProviderConfig>> loadProviders() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _prefs;
     final raw = prefs.getString(_keyProviders);
     if (raw == null || raw.isEmpty) return _defaultProviders();
     try {
@@ -28,36 +31,36 @@ class StorageService {
   }
 
   static Future<void> saveSelectedId(String id) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _prefs;
     await prefs.setString(_keySelected, id);
   }
 
   static Future<String?> loadSelectedId() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _prefs;
     return prefs.getString(_keySelected);
   }
 
   static Future<void> saveLocale(String locale) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _prefs;
     await prefs.setString(_keyLocale, locale);
   }
 
   static Future<String> loadLocale() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _prefs;
     return prefs.getString(_keyLocale) ?? 'en';
   }
 
   static List<ProviderConfig> _defaultProviders() {
     return [
       ProviderConfig(
-        id: '1',
+        id: ProviderConfig.generateId(),
         name: 'DeepSeek',
         baseUrl: 'https://api.deepseek.com',
         apiKey: 'sk-***',
         refreshIntervalMinutes: 10,
       ),
       ProviderConfig(
-        id: '2',
+        id: ProviderConfig.generateId(),
         name: 'OpenAI',
         baseUrl: 'https://api.openai.com',
         apiKey: 'sk-***',

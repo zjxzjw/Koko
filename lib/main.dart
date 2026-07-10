@@ -9,6 +9,7 @@ import 'i18n/app_localizations.dart';
 import 'models/provider_model.dart';
 import 'services/api_service.dart';
 import 'services/storage_service.dart';
+import 'ui/app_theme.dart';
 import 'ui/dashboard_view.dart';
 import 'ui/tray_popup_view.dart';
 
@@ -63,7 +64,7 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
   String _localeCode = 'en';
   Future<BalanceResult>? _balanceFuture;
   Timer? _refreshTimer;
-  Color _balanceColor = Colors.black.withValues(alpha: 0.85);
+  Color _balanceColor = AppColors.primaryText;
 
   @override
   void initState() {
@@ -172,14 +173,14 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
 
   Color _calcBalanceColor(BalanceResult? balance, ProviderConfig? provider) {
     if (balance == null || provider == null) {
-      return Colors.black.withValues(alpha: 0.85);
+      return AppColors.primaryText;
     }
     if (balance.remaining < 0) return Colors.red.shade700;
     if (provider.minBalance != null &&
         balance.remaining < provider.minBalance!) {
       return Colors.amber.shade700;
     }
-    return Colors.black.withValues(alpha: 0.85);
+    return AppColors.primaryText;
   }
 
   void _updateTrayTitle() {
@@ -309,14 +310,14 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
                 Icon(
                   Icons.dns_outlined,
                   size: 48,
-                  color: Colors.black.withValues(alpha: 0.2),
+                  color: AppColors.subtleText,
                 ),
                 const SizedBox(height: 16),
                 Text(
                   'No providers configured',
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.black.withValues(alpha: 0.45),
+                    color: AppColors.mutedText,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -324,7 +325,7 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
                   'Add one in Settings to get started',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.black.withValues(alpha: 0.25),
+                    color: AppColors.faintText,
                   ),
                 ),
               ],

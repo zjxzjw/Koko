@@ -1,11 +1,13 @@
 class ProviderConfig {
   final String id;
-  String name;
-  String baseUrl;
-  String apiKey;
-  String? customBalancePath;
-  int refreshIntervalMinutes;
-  double? minBalance;
+  final String name;
+  final String baseUrl;
+  final String apiKey;
+  final String? customBalancePath;
+  final int refreshIntervalMinutes;
+  final double? minBalance;
+
+  static int _nextId = 0;
 
   ProviderConfig({
     required this.id,
@@ -16,6 +18,11 @@ class ProviderConfig {
     this.refreshIntervalMinutes = 0,
     this.minBalance,
   });
+
+  static String generateId() {
+    _nextId++;
+    return 'p_${DateTime.now().microsecondsSinceEpoch}_$_nextId';
+  }
 
   Map<String, dynamic> toMap() => {
     'id': id,
