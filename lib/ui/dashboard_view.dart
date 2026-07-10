@@ -298,10 +298,9 @@ class _DashboardViewState extends State<DashboardView> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Container(
-          constraints: const BoxConstraints(maxWidth: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          constraints: const BoxConstraints(maxWidth: 220),
           decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: Colors.black.withValues(alpha: 0.04),
             borderRadius: BorderRadius.circular(8),
           ),
           child: DropdownButtonHideUnderline(
@@ -309,16 +308,20 @@ class _DashboardViewState extends State<DashboardView> {
               value: widget.activeProvider.id,
               dropdownColor: Colors.white,
               isExpanded: true,
-              icon: Icon(Icons.keyboard_arrow_down, size: 16,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              icon: Icon(Icons.keyboard_arrow_down, size: 18,
                   color: Colors.black.withValues(alpha: 0.4)),
               style: TextStyle(
-                  color: Colors.black.withValues(alpha: 0.8),
+                  color: Colors.black.withValues(alpha: 0.85),
                   fontSize: 13,
                   fontWeight: FontWeight.w500),
               items: widget.allProviders
                   .map((p) => DropdownMenuItem(
                       value: p.id,
-                      child: Text(p.name, overflow: TextOverflow.ellipsis)))
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        child: Text(p.name, overflow: TextOverflow.ellipsis),
+                      )))
                   .toList(),
               onChanged: (id) {
                 if (id != null && id != widget.activeProvider.id) {

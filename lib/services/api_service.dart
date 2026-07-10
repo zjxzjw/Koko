@@ -54,7 +54,7 @@ class ApiService {
     }
 
     final balData = balRes.data as Map<String, dynamic>;
-    debugPrint('   Body: $_truncate(balData)');
+    debugPrint('   Body: ${_truncate(balData)}');
 
     final infos = (balData['balance_infos'] as List<dynamic>?)
             ?.map((e) => e as Map<String, dynamic>)
@@ -99,7 +99,7 @@ class ApiService {
         debugPrint('   ← ${uRes.statusCode}');
         if (uRes.statusCode == 200 && uRes.data is Map) {
           uData = uRes.data as Map<String, dynamic>;
-          debugPrint('   Body: ${_truncate(uData!)}');
+          debugPrint('   Body: ${_truncate(uData)}');
           break;
         }
       } catch (e) {
@@ -108,7 +108,7 @@ class ApiService {
     }
 
     if (uData != null) {
-        final items = (uData!['data'] as List<dynamic>?)
+        final items = (uData['data'] as List<dynamic>?)
                 ?.map((e) => e as Map<String, dynamic>)
                 .toList() ??
             [];
@@ -142,11 +142,6 @@ class ApiService {
           totalCost += cost;
           totalTokens += prompt + completion;
         }
-      } else {
-        debugPrint('   ← usage returned ${uRes.statusCode}');
-      }
-    } catch (e) {
-      debugPrint('   ← usage error: $e');
     }
 
     // Build model breakdown list
