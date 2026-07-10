@@ -31,18 +31,24 @@ class _TrayPopupViewState extends State<TrayPopupView> {
       backgroundColor: AppColors.background,
       body: BalanceFutureBuilder(
         future: widget.balanceFuture,
-        idle: const Center(
+        idle: Center(
           child: SizedBox(
             width: 16,
             height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.primaryText,
+            ),
           ),
         ),
-        loading: const Center(
+        loading: Center(
           child: SizedBox(
             width: 16,
             height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.primaryText,
+            ),
           ),
         ),
         builder: (context, data) => _buildContent(data),

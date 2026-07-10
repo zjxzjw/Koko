@@ -529,10 +529,13 @@ class _DashboardViewState extends State<DashboardView> {
                   ),
                 ],
               )
-            : const SizedBox(
+            : SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.primaryText,
+                ),
               ),
       );
     }

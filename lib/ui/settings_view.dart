@@ -377,6 +377,7 @@ class _SettingsViewState extends State<SettingsView> {
     return TextField(
       controller: controller,
       obscureText: obscure,
+      cursorColor: AppColors.primaryText,
       style: TextStyle(
         fontSize: 13,
         color: AppColors.primaryText,
@@ -441,11 +442,14 @@ class _SettingsViewState extends State<SettingsView> {
         ],
       ),
       body: _loading
-          ? const Center(
+          ? Center(
               child: SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.primaryText,
+                ),
               ),
             )
           : Column(

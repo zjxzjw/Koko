@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/provider_model.dart';
+import 'app_theme.dart';
 
 class BalanceFutureBuilder extends StatelessWidget {
   final Future<BalanceResult>? future;
@@ -21,11 +22,14 @@ class BalanceFutureBuilder extends StatelessWidget {
   Widget build(BuildContext context) {
     if (future == null) {
       return idle ??
-          const Center(
+          Center(
             child: SizedBox(
               width: 20,
               height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.primaryText,
+              ),
             ),
           );
     }
@@ -41,11 +45,14 @@ class BalanceFutureBuilder extends StatelessWidget {
               const SizedBox.shrink();
         }
         return loading ??
-            const Center(
+            Center(
               child: SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.primaryText,
+                ),
               ),
             );
       },
