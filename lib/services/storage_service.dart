@@ -160,6 +160,17 @@ class StorageService {
     }
   }
 
+  static Future<void> saveLastNotifyTime(String providerId) async {
+    final prefs = await _prefs;
+    await prefs.setInt('last_notify_$providerId',
+        DateTime.now().millisecondsSinceEpoch);
+  }
+
+  static Future<int> loadLastNotifyTime(String providerId) async {
+    final prefs = await _prefs;
+    return prefs.getInt('last_notify_$providerId') ?? 0;
+  }
+
   static Future<void> saveSelectedId(String id) async {
     final prefs = await _prefs;
     await prefs.setString(_keySelected, id);

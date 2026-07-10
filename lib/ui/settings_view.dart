@@ -813,8 +813,8 @@ class _SettingsViewState extends State<SettingsView> {
       child: Text(
         title,
         style: TextStyle(
-          fontSize: 10,
-          color: AppColors.dimText,
+          fontSize: 12,
+          color: AppColors.primaryText,
           fontWeight: FontWeight.w600,
           letterSpacing: 1.1,
         ),

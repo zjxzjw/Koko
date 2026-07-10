@@ -114,7 +114,7 @@ class AppLocalizations {
     'language': '语言',
     'settings': '设置',
     'general_settings': '通用设置',
-    'model_settings': '模型设置',
+    'model_settings': '提供商设置',
     'balance_monitor': 'KOKO \u2014 LLM 余额监控',
     'balance_monitor_long':
         '{name}\n剩余：{symbol}{remaining}\n已用：{symbol}{used}',
