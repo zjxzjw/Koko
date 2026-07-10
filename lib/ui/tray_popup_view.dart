@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
+
 import '../models/provider_model.dart';
 import '../services/api_service.dart';
 
-/// Minimal popup shown when clicking the menu-bar icon.
 class TrayPopupView extends StatefulWidget {
   final ProviderConfig activeProvider;
   final VoidCallback onOpenFullWindow;
@@ -65,7 +65,8 @@ class _TrayPopupViewState extends State<TrayPopupView> {
                       children: [
                         if (data != null)
                           Container(
-                            width: 6, height: 6,
+                            width: 6,
+                            height: 6,
                             margin: const EdgeInsets.only(right: 6),
                             decoration: const BoxDecoration(
                               color: Color(0xFF34C759),
@@ -83,11 +84,17 @@ class _TrayPopupViewState extends State<TrayPopupView> {
                       ],
                     ),
                     IconButton(
-                      icon: Icon(Icons.close_rounded, size: 15,
-                          color: Colors.black.withValues(alpha: 0.25)),
+                      icon: Icon(
+                        Icons.close_rounded,
+                        size: 15,
+                        color: Colors.black.withValues(alpha: 0.25),
+                      ),
                       onPressed: () => windowManager.hide(),
                       padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                      constraints: const BoxConstraints(
+                        minWidth: 24,
+                        minHeight: 24,
+                      ),
                     ),
                   ],
                 ),
@@ -139,12 +146,18 @@ class _TrayPopupViewState extends State<TrayPopupView> {
                   width: double.infinity,
                   child: TextButton.icon(
                     onPressed: widget.onOpenFullWindow,
-                    icon: Icon(Icons.settings_outlined, size: 15,
-                        color: Colors.black.withValues(alpha: 0.55)),
-                    label: Text('Open Dashboard',
-                        style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.black.withValues(alpha: 0.55))),
+                    icon: Icon(
+                      Icons.settings_outlined,
+                      size: 15,
+                      color: Colors.black.withValues(alpha: 0.55),
+                    ),
+                    label: Text(
+                      'Open Dashboard',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.black.withValues(alpha: 0.55),
+                      ),
+                    ),
                     style: TextButton.styleFrom(
                       backgroundColor: Colors.black.withValues(alpha: 0.04),
                       padding: const EdgeInsets.symmetric(vertical: 8),

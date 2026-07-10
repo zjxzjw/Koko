@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
+
 import '../models/provider_model.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
@@ -116,7 +117,6 @@ class _DashboardViewState extends State<DashboardView> {
                   ),
                 ),
               ],
-              // ── Chart ──────────────────────────────────────────
               if (data != null) ...[
                 const SizedBox(height: 16),
                 Padding(
@@ -125,13 +125,17 @@ class _DashboardViewState extends State<DashboardView> {
                     children: [
                       _chartLabel('Daily Cost'),
                       const Spacer(),
-                      _chartChip('Cost',
-                          '${data.currencySymbol}${data.used.toStringAsFixed(2)}',
-                          const Color(0xFF3B82F6)),
+                      _chartChip(
+                        'Cost',
+                        '${data.currencySymbol}${data.used.toStringAsFixed(2)}',
+                        const Color(0xFF3B82F6),
+                      ),
                       const SizedBox(width: 12),
-                      _chartChip('Tokens',
-                          '${_fmtTokens(data.daily.fold<int>(0, (s, d) => s + d.tokens))}',
-                          const Color(0xFF10B981)),
+                      _chartChip(
+                        'Tokens',
+                        '${_fmtTokens(data.daily.fold<int>(0, (s, d) => s + d.tokens))}',
+                        const Color(0xFF10B981),
+                      ),
                     ],
                   ),
                 ),
@@ -144,7 +148,6 @@ class _DashboardViewState extends State<DashboardView> {
                   ),
                 ),
               ],
-              // ── Usage list ─────────────────────────────────────
               const SizedBox(height: 16),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -159,8 +162,13 @@ class _DashboardViewState extends State<DashboardView> {
                 ),
               ),
               const SizedBox(height: 8),
-              Expanded(child: _buildUsageList(data, error, data?.currencySymbol ?? '\$')),
-              // ── Footer ─────────────────────────────────────────
+              Expanded(
+                child: _buildUsageList(
+                  data,
+                  error,
+                  data?.currencySymbol ?? '\$',
+                ),
+              ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                 child: _buildFooter(context),
@@ -180,11 +188,14 @@ class _DashboardViewState extends State<DashboardView> {
         : List.generate(
             daysInMonth,
             (i) => DailyUsage(
-                date: DateTime(now.year, now.month, i + 1),
-                cost: 0,
-                tokens: 0));
-    final maxCost =
-        daily.map((d) => d.cost).fold<double>(0, (a, b) => a > b ? a : b);
+              date: DateTime(now.year, now.month, i + 1),
+              cost: 0,
+              tokens: 0,
+            ),
+          );
+    final maxCost = daily
+        .map((d) => d.cost)
+        .fold<double>(0, (a, b) => a > b ? a : b);
 
     return BarChart(
       BarChartData(
@@ -199,17 +210,22 @@ class _DashboardViewState extends State<DashboardView> {
               return BarTooltipItem(
                 '${d.date.day}/${d.date.month}\n${data.currencySymbol}${d.cost.toStringAsFixed(3)}',
                 TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500),
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                ),
               );
             },
           ),
         ),
         titlesData: FlTitlesData(
           show: true,
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
@@ -217,7 +233,9 @@ class _DashboardViewState extends State<DashboardView> {
               getTitlesWidget: (v, meta) => Text(
                 v == 0 ? '' : '${data.currencySymbol}${v.toStringAsFixed(0)}',
                 style: TextStyle(
-                    fontSize: 8, color: Colors.black.withValues(alpha: 0.3)),
+                  fontSize: 8,
+                  color: Colors.black.withValues(alpha: 0.3),
+                ),
               ),
             ),
           ),
@@ -228,14 +246,16 @@ class _DashboardViewState extends State<DashboardView> {
               interval: (daily.length / 6).ceilToDouble().clamp(1, 999),
               getTitlesWidget: (v, meta) {
                 final idx = v.toInt();
-                if (idx < 0 || idx >= daily.length) return const SizedBox.shrink();
+                if (idx < 0 || idx >= daily.length)
+                  return const SizedBox.shrink();
                 return Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(
                     '${daily[idx].date.day}',
                     style: TextStyle(
-                        fontSize: 8,
-                        color: Colors.black.withValues(alpha: 0.3)),
+                      fontSize: 8,
+                      color: Colors.black.withValues(alpha: 0.3),
+                    ),
                   ),
                 );
               },
@@ -259,7 +279,9 @@ class _DashboardViewState extends State<DashboardView> {
               BarChartRodData(
                 toY: daily[i].cost,
                 width: (520 - 64) / daily.length * 0.6,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(3),
+                ),
                 color: daily[i].cost > 0
                     ? const Color(0xFF3B82F6)
                     : Colors.black.withValues(alpha: 0.06),
@@ -271,21 +293,36 @@ class _DashboardViewState extends State<DashboardView> {
     );
   }
 
-  Widget _chartLabel(String text) => Text(text,
-      style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: Colors.black.withValues(alpha: 0.55)));
+  Widget _chartLabel(String text) => Text(
+    text,
+    style: TextStyle(
+      fontSize: 11,
+      fontWeight: FontWeight.w600,
+      color: Colors.black.withValues(alpha: 0.55),
+    ),
+  );
 
   Widget _chartChip(String label, String value, Color color) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(width: 8, height: 8, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
-          const SizedBox(width: 4),
-          Text('$label $value',
-              style: TextStyle(fontSize: 10, color: Colors.black.withValues(alpha: 0.45))),
-        ],
-      );
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
+      const SizedBox(width: 4),
+      Text(
+        '$label $value',
+        style: TextStyle(
+          fontSize: 10,
+          color: Colors.black.withValues(alpha: 0.45),
+        ),
+      ),
+    ],
+  );
 
   String _fmtTokens(int n) {
     if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
@@ -309,19 +346,29 @@ class _DashboardViewState extends State<DashboardView> {
               dropdownColor: Colors.white,
               isExpanded: true,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              icon: Icon(Icons.keyboard_arrow_down, size: 18,
-                  color: Colors.black.withValues(alpha: 0.4)),
+              icon: Icon(
+                Icons.keyboard_arrow_down,
+                size: 18,
+                color: Colors.black.withValues(alpha: 0.4),
+              ),
               style: TextStyle(
-                  color: Colors.black.withValues(alpha: 0.85),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500),
+                color: Colors.black.withValues(alpha: 0.85),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
               items: widget.allProviders
-                  .map((p) => DropdownMenuItem(
+                  .map(
+                    (p) => DropdownMenuItem(
                       value: p.id,
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 2,
+                        ),
                         child: Text(p.name, overflow: TextOverflow.ellipsis),
-                      )))
+                      ),
+                    ),
+                  )
                   .toList(),
               onChanged: (id) {
                 if (id != null && id != widget.activeProvider.id) {
@@ -336,21 +383,31 @@ class _DashboardViewState extends State<DashboardView> {
           children: [
             if (data != null && data.details.isNotEmpty)
               Container(
-                  width: 6, height: 6,
-                  decoration: const BoxDecoration(
-                      color: Color(0xFF34C759), shape: BoxShape.circle)),
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF34C759),
+                  shape: BoxShape.circle,
+                ),
+              ),
             const SizedBox(width: 8),
             IconButton(
-              icon: Icon(Icons.refresh_rounded, size: 16,
-                  color: Colors.black.withValues(alpha: 0.35)),
+              icon: Icon(
+                Icons.refresh_rounded,
+                size: 16,
+                color: Colors.black.withValues(alpha: 0.35),
+              ),
               onPressed: _refreshData,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
               tooltip: 'Refresh',
             ),
             IconButton(
-              icon: Icon(Icons.close_rounded, size: 16,
-                  color: Colors.black.withValues(alpha: 0.25)),
+              icon: Icon(
+                Icons.close_rounded,
+                size: 16,
+                color: Colors.black.withValues(alpha: 0.25),
+              ),
               onPressed: () => windowManager.hide(),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
@@ -369,32 +426,46 @@ class _DashboardViewState extends State<DashboardView> {
             ? Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.cloud_off, size: 28,
-                      color: Colors.black.withValues(alpha: 0.25)),
+                  Icon(
+                    Icons.cloud_off,
+                    size: 28,
+                    color: Colors.black.withValues(alpha: 0.25),
+                  ),
                   const SizedBox(height: 8),
-                  Text('Unable to reach API',
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.black.withValues(alpha: 0.45))),
+                  Text(
+                    'Unable to reach API',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.black.withValues(alpha: 0.45),
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text('Check your API key and network',
-                      style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.black.withValues(alpha: 0.25))),
+                  Text(
+                    'Check your API key and network',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.black.withValues(alpha: 0.25),
+                    ),
+                  ),
                 ],
               )
             : const SizedBox(
-                width: 20, height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2)),
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
       );
     }
 
     if (data.details.isEmpty) {
       return Center(
-        child: Text('No usage data yet',
-            style: TextStyle(
-                fontSize: 13,
-                color: Colors.black.withValues(alpha: 0.35))),
+        child: Text(
+          'No usage data yet',
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.black.withValues(alpha: 0.35),
+          ),
+        ),
       );
     }
 
@@ -418,29 +489,36 @@ class _DashboardViewState extends State<DashboardView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.modelName,
-                        style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.black.withValues(alpha: 0.8),
-                            fontWeight: FontWeight.w500)),
+                    Text(
+                      item.modelName,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.black.withValues(alpha: 0.8),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                     if (item.totalTokens > 0) ...[
                       const SizedBox(height: 4),
                       Text(
                         'Tokens: In ${(item.promptTokens / 1000).toStringAsFixed(0)}k'
                         ' | Out ${(item.completionTokens / 1000).toStringAsFixed(0)}k',
                         style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.black.withValues(alpha: 0.35)),
+                          fontSize: 10,
+                          color: Colors.black.withValues(alpha: 0.35),
+                        ),
                       ),
                     ],
                   ],
                 ),
               ),
-              Text('$symbol${item.cost.toStringAsFixed(3)}',
-                  style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black.withValues(alpha: 0.55))),
+              Text(
+                '$symbol${item.cost.toStringAsFixed(3)}',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black.withValues(alpha: 0.55),
+                ),
+              ),
             ],
           ),
         );
@@ -451,9 +529,9 @@ class _DashboardViewState extends State<DashboardView> {
   Widget _buildFooter(BuildContext context) {
     return InkWell(
       onTap: () async {
-        await Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const SettingsView()),
-        );
+        await Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const SettingsView()));
         widget.onRefreshRequested();
       },
       borderRadius: BorderRadius.circular(8),
@@ -465,10 +543,13 @@ class _DashboardViewState extends State<DashboardView> {
           color: Colors.black.withValues(alpha: 0.04),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Text('Preferences...',
-            style: TextStyle(
-                fontSize: 12,
-                color: Colors.black.withValues(alpha: 0.45))),
+        child: Text(
+          'Preferences...',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.black.withValues(alpha: 0.45),
+          ),
+        ),
       ),
     );
   }

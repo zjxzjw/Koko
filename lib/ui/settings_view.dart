@@ -44,9 +44,7 @@ class _SettingsViewState extends State<SettingsView> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.zero,
-        ),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
         title: Text(
           'Remove provider?',
           style: TextStyle(
@@ -102,9 +100,7 @@ class _SettingsViewState extends State<SettingsView> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.zero,
-        ),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
         title: Text(
           existing == null ? 'Add Provider' : 'Edit Provider',
           style: TextStyle(
@@ -117,11 +113,18 @@ class _SettingsViewState extends State<SettingsView> {
           children: [
             _buildField('Name', _nameController, hint: 'e.g. DeepSeek'),
             const SizedBox(height: 12),
-            _buildField('Base URL (OpenAI-compatible)', _urlController,
-                hint: 'https://api.deepseek.com'),
+            _buildField(
+              'Base URL (OpenAI-compatible)',
+              _urlController,
+              hint: 'https://api.deepseek.com',
+            ),
             const SizedBox(height: 12),
-            _buildField('API Key', _keyController,
-                hint: 'sk-...', obscure: true),
+            _buildField(
+              'API Key',
+              _keyController,
+              hint: 'sk-...',
+              obscure: true,
+            ),
           ],
         ),
         actions: [
@@ -144,12 +147,14 @@ class _SettingsViewState extends State<SettingsView> {
                 existing.baseUrl = url;
                 existing.apiKey = key;
               } else {
-                _providers.add(ProviderConfig(
-                  id: DateTime.now().millisecondsSinceEpoch.toString(),
-                  name: name,
-                  baseUrl: url,
-                  apiKey: key,
-                ));
+                _providers.add(
+                  ProviderConfig(
+                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                    name: name,
+                    baseUrl: url,
+                    apiKey: key,
+                  ),
+                );
               }
               final nav = Navigator.of(ctx);
               await StorageService.saveProviders(_providers);
@@ -166,8 +171,12 @@ class _SettingsViewState extends State<SettingsView> {
     );
   }
 
-  Widget _buildField(String label, TextEditingController controller,
-      {String? hint, bool obscure = false}) {
+  Widget _buildField(
+    String label,
+    TextEditingController controller, {
+    String? hint,
+    bool obscure = false,
+  }) {
     final borderColor = Colors.black.withValues(alpha: 0.12);
     return TextField(
       controller: controller,
@@ -199,12 +208,12 @@ class _SettingsViewState extends State<SettingsView> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.zero,
-          borderSide: BorderSide(
-            color: Colors.black.withValues(alpha: 0.35),
-          ),
+          borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.35)),
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 10,
+        ),
       ),
     );
   }
@@ -224,12 +233,14 @@ class _SettingsViewState extends State<SettingsView> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
-        iconTheme:
-            IconThemeData(color: Colors.black.withValues(alpha: 0.6)),
+        iconTheme: IconThemeData(color: Colors.black.withValues(alpha: 0.6)),
         actions: [
           IconButton(
-            icon: Icon(Icons.add,
-                size: 20, color: Colors.black.withValues(alpha: 0.6)),
+            icon: Icon(
+              Icons.add,
+              size: 20,
+              color: Colors.black.withValues(alpha: 0.6),
+            ),
             onPressed: () => _showEditor(),
           ),
         ],
@@ -243,75 +254,80 @@ class _SettingsViewState extends State<SettingsView> {
               ),
             )
           : _providers.isEmpty
-              ? Center(
-                  child: Column(
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.dns_outlined,
+                    size: 36,
+                    color: Colors.black.withValues(alpha: 0.2),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'No providers configured',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.black.withValues(alpha: 0.45),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () => _showEditor(),
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text('Add your first provider'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black.withValues(alpha: 0.06),
+                      foregroundColor: Colors.black.withValues(alpha: 0.75),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : ListView.builder(
+              itemCount: _providers.length,
+              itemBuilder: (context, idx) {
+                final p = _providers[idx];
+                return ListTile(
+                  title: Text(
+                    p.name,
+                    style: TextStyle(
+                      color: Colors.black.withValues(alpha: 0.85),
+                      fontSize: 13,
+                    ),
+                  ),
+                  subtitle: Text(
+                    p.baseUrl,
+                    style: TextStyle(
+                      color: Colors.black.withValues(alpha: 0.4),
+                      fontSize: 11,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.dns_outlined,
-                          size: 36,
-                          color: Colors.black.withValues(alpha: 0.2)),
-                      const SizedBox(height: 12),
-                      Text(
-                        'No providers configured',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.black.withValues(alpha: 0.45),
+                      IconButton(
+                        icon: Icon(
+                          Icons.edit_outlined,
+                          size: 16,
+                          color: Colors.black.withValues(alpha: 0.4),
                         ),
+                        onPressed: () => _showEditor(existing: p),
                       ),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: () => _showEditor(),
-                        icon: const Icon(Icons.add, size: 16),
-                        label: const Text('Add your first provider'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              Colors.black.withValues(alpha: 0.06),
-                          foregroundColor:
-                              Colors.black.withValues(alpha: 0.75),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          size: 16,
+                          color: Colors.redAccent,
                         ),
+                        onPressed: () => _deleteProvider(p),
                       ),
                     ],
                   ),
-                )
-              : ListView.builder(
-                  itemCount: _providers.length,
-                  itemBuilder: (context, idx) {
-                    final p = _providers[idx];
-                    return ListTile(
-                      title: Text(
-                        p.name,
-                        style: TextStyle(
-                          color: Colors.black.withValues(alpha: 0.85),
-                          fontSize: 13,
-                        ),
-                      ),
-                      subtitle: Text(
-                        p.baseUrl,
-                        style: TextStyle(
-                          color: Colors.black.withValues(alpha: 0.4),
-                          fontSize: 11,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: Icon(Icons.edit_outlined,
-                                size: 16,
-                                color: Colors.black.withValues(alpha: 0.4)),
-                            onPressed: () => _showEditor(existing: p),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline,
-                                size: 16, color: Colors.redAccent),
-                            onPressed: () => _deleteProvider(p),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+                );
+              },
+            ),
     );
   }
 }

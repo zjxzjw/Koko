@@ -9,28 +9,23 @@ import 'services/storage_service.dart';
 import 'ui/dashboard_view.dart';
 import 'ui/tray_popup_view.dart';
 
-/// Sizes for the two window modes.
 const _kPopupSize = Size(250, 190);
 const _kFullSize = Size(520, 700);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Suppress the known Flutter macOS keyboard assertion bug
-  // (duplicate KeyDownEvent for backspace in merged-thread mode).
   FlutterError.onError = (details) {
     if (details.exception is AssertionError &&
         details.exception.toString().contains('KeyDownEvent')) {
-      return; // ignore
+      return;
     }
     FlutterError.presentError(details);
   };
 
   await windowManager.ensureInitialized();
 
-  // Solid white background prevents the black flash before Flutter paints.
   WindowOptions windowOptions = const WindowOptions(
-    size: _kFullSize,
     center: true,
     backgroundColor: Colors.white,
     skipTaskbar: true,
@@ -78,8 +73,9 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
 
   Future<void> _initTrayAndData() async {
     try {
-      final iconPath =
-          Platform.isWindows ? 'assets/app_icon.ico' : 'assets/tray_icon.png';
+      final iconPath = Platform.isWindows
+          ? 'assets/app_icon.ico'
+          : 'assets/tray_icon.png';
       await trayManager.setIcon(iconPath);
     } catch (e) {
       debugPrint('⚠ Tray setIcon error: $e');
@@ -140,8 +136,6 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
     }
   }
 
-  // ---- View switching ------------------------------------------------------
-
   Future<void> _showTrayPopup() async {
     await windowManager.setSize(_kPopupSize);
     if (mounted) setState(() => _isFullView = false);
@@ -164,8 +158,6 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
     await windowManager.show();
     await windowManager.focus();
   }
-
-  // ---- Tray events ---------------------------------------------------------
 
   @override
   Future<void> onTrayIconMouseDown() async {
@@ -191,8 +183,6 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
     }
   }
 
-  // ---- Window events -------------------------------------------------------
-
   @override
   void onWindowBlur() async {
     await windowManager.hide();
@@ -204,8 +194,6 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
     await windowManager.hide();
     if (mounted) setState(() => _isFullView = false);
   }
-
-  // ---- Build ---------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {

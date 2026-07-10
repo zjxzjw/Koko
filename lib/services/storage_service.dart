@@ -6,14 +6,12 @@ class StorageService {
   static const String _keyProviders = 'custom_providers';
   static const String _keySelected = 'selected_provider_id';
 
-  /// Save the full list of provider configs to local storage.
   static Future<void> saveProviders(List<ProviderConfig> providers) async {
     final prefs = await SharedPreferences.getInstance();
     final data = providers.map((p) => p.toMap()).toList();
     await prefs.setString(_keyProviders, jsonEncode(data));
   }
 
-  /// Load all provider configs. Returns default seed data when none exist.
   static Future<List<ProviderConfig>> loadProviders() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_keyProviders);
@@ -28,19 +26,16 @@ class StorageService {
     }
   }
 
-  /// Persist the currently-selected provider ID.
   static Future<void> saveSelectedId(String id) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keySelected, id);
   }
 
-  /// Retrieve the last-saved provider ID, or null.
   static Future<String?> loadSelectedId() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_keySelected);
   }
 
-  /// Seed data shown on first launch.
   static List<ProviderConfig> _defaultProviders() {
     return [
       ProviderConfig(
