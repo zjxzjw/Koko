@@ -9,7 +9,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.8
   window_manager: ^0.4.3
   tray_manager: ^0.2.4
   dio: ^5.7.0
