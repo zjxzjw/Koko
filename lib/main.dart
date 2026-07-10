@@ -11,7 +11,7 @@ import 'ui/dashboard_view.dart';
 import 'ui/tray_popup_view.dart';
 
 const _kPopupSize = Size(250, 190);
-const _kFullSize = Size(520, 700);
+const _kFullSize = Size(520, 520);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
