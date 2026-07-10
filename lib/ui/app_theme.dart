@@ -12,7 +12,7 @@ class AppColors {
   static Color text(double opacity) =>
       (isDark ? Colors.white : Colors.black).withValues(alpha: opacity);
 
-  static Color surface(double opacity) =>
+  static Color overlay(double opacity) =>
       (isDark ? Colors.white : Colors.black).withValues(alpha: opacity);
 
   static Color border(double opacity) =>
@@ -26,9 +26,9 @@ class AppColors {
   static Color get subtleText => text(0.20);
   static Color get accentText => text(0.4);
 
-  static Color get hoverBg => surface(0.04);
-  static Color get cardBg => surface(0.03);
-  static Color get overlayBg => surface(0.06);
+  static Color get hoverBg => overlay(0.04);
+  static Color get cardBg => overlay(0.03);
+  static Color get overlayBg => overlay(0.06);
 
   static Color get background => isDark ? const Color(0xFF1C1C1E) : Colors.white;
   static Color get dialogBg => isDark ? const Color(0xFF2C2C2E) : Colors.white;

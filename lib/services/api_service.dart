@@ -1,7 +1,4 @@
-import 'dart:io';
-
 import 'package:dio/dio.dart';
-import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/provider_model.dart';
@@ -13,15 +10,7 @@ class ApiService {
       receiveTimeout: const Duration(seconds: 10),
       validateStatus: (_) => true,
     ),
-  )..httpClientAdapter = IOHttpClientAdapter(
-      createHttpClient: () {
-        final client = HttpClient();
-        client.connectionTimeout = const Duration(seconds: 10);
-        client.maxConnectionsPerHost = 1;
-        client.idleTimeout = const Duration(seconds: 5);
-        return client;
-      },
-    );
+  );
 
   static Future<BalanceResult> fetchBalance(ProviderConfig config) async {
     final base = config.baseUrl
@@ -50,7 +39,6 @@ class ApiService {
     Map<String, String> headers, {
     String? customBalancePath,
   }) async {
-    // 1. Balance
     final balUrl = '$base/user/balance';
     final balRes = await _dio.get(balUrl, options: Options(headers: headers));
     if (balRes.statusCode != 200) {
@@ -78,7 +66,6 @@ class ApiService {
       toppedUp += _toDouble(info['topped_up_balance'] ?? 0);
     }
 
-    // 2. Usage (daily breakdown for charts) — try known paths.
     final now = DateTime.now();
     final startDate = '${now.year}-${_pad(now.month)}-01';
     final endDate = '${now.year}-${_pad(now.month)}-${_pad(now.day)}';
@@ -110,7 +97,7 @@ class ApiService {
           return uRes.data as Map<String, dynamic>;
         }
       } catch (e) {
-        debugPrint('   ← path $path error: $e');
+        debugPrint('path $path error: $e');
       }
       return null;
     }).toList();
@@ -120,9 +107,6 @@ class ApiService {
       (r) => r != null,
       orElse: () => null,
     );
-    if (uData != null) {
-      debugPrint('   Body: ${_truncate(uData)}');
-    }
 
     if (uData != null) {
       final items =
@@ -243,14 +227,12 @@ class ApiService {
     try {
       final costUrl =
           '$base/v1/organization/costs?start_date=$start&end_date=$end';
-      debugPrint('   ➤ GET $costUrl');
       final r = await _dio.get(costUrl, options: Options(headers: headers));
-      debugPrint('   ← ${r.statusCode}');
       if (r.statusCode == 200) {
         return _parseOpenAICosts(r.data as Map<String, dynamic>);
       }
     } on DioException catch (e) {
-      debugPrint('   ← ${e.response?.statusCode} — trying usage endpoint');
+      debugPrint('OpenAI costs endpoint error: ${e.response?.statusCode}');
     }
 
     final dateStr = '${now.year}-${_pad(now.month)}-${_pad(now.day)}';
@@ -366,21 +348,24 @@ class ApiService {
     for (final item in usageData) {
       final m = item as Map<String, dynamic>;
       final name = m['snapshot_id']?.toString() ?? 'usage';
+      final promptTokens = _toInt(m['n_context_tokens_total'] ?? 0);
+      final completionTokens = _toInt(m['n_generated_tokens_total'] ?? 0);
+      final amount = m['amount'] as Map<String, dynamic>?;
+      final cost = amount != null ? _toDouble(amount['value'] ?? 0) : 0.0;
+
       modelAgg.update(
         name,
         (u) => ModelUsage(
           modelName: name,
-          promptTokens:
-              u.promptTokens + _toInt(m['n_context_tokens_total'] ?? 0),
-          completionTokens:
-              u.completionTokens + _toInt(m['n_generated_tokens_total'] ?? 0),
-          cost: 0,
+          promptTokens: u.promptTokens + promptTokens,
+          completionTokens: u.completionTokens + completionTokens,
+          cost: u.cost + cost,
         ),
         ifAbsent: () => ModelUsage(
           modelName: name,
-          promptTokens: _toInt(m['n_context_tokens_total'] ?? 0),
-          completionTokens: _toInt(m['n_generated_tokens_total'] ?? 0),
-          cost: 0,
+          promptTokens: promptTokens,
+          completionTokens: completionTokens,
+          cost: cost,
         ),
       );
     }
@@ -395,15 +380,16 @@ class ApiService {
         ),
       );
     }
-    return BalanceResult(remaining: 0, used: 0, details: details, daily: []);
+    final totalCost = details.fold<double>(0, (s, u) => s + u.cost);
+    return BalanceResult(
+      remaining: 0,
+      used: totalCost,
+      details: details,
+      daily: [],
+    );
   }
 
   static String _pad(int n) => n.toString().padLeft(2, '0');
-
-  static String _truncate(dynamic d, {int maxLen = 400}) {
-    final s = d.toString();
-    return s.length > maxLen ? '${s.substring(0, maxLen)}...' : s;
-  }
 
   static double _toDouble(dynamic v) {
     if (v is double) return v;
@@ -424,5 +410,3 @@ class _DayAgg {
   double cost = 0;
   int tokens = 0;
 }
-
-

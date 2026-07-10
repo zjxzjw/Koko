@@ -103,7 +103,7 @@ class _SettingsViewState extends State<SettingsView> {
     if (confirmed == true) {
       _providers.removeWhere((item) => item.id == p.id);
       await StorageService.saveProviders(_providers);
-      _loadData();
+      setState(() {});
     }
   }
 
@@ -321,12 +321,18 @@ class _SettingsViewState extends State<SettingsView> {
                 final name = _nameController.text.trim();
                 final url = _urlController.text.trim();
                 final key = _keyController.text.trim();
-                if (name.isEmpty || url.isEmpty || key.isEmpty) return;
+
+                if (name.isEmpty) return;
+                if (url.isEmpty || (!url.startsWith('http://') && !url.startsWith('https://'))) return;
+                if (key.isEmpty) return;
 
                 final minBalText = _minBalanceController.text.trim();
-                final minBalance = minBalText.isEmpty
-                    ? null
-                    : double.tryParse(minBalText);
+                double? minBalance;
+                if (minBalText.isNotEmpty) {
+                  final parsed = double.tryParse(minBalText);
+                  if (parsed == null || parsed < 0) return;
+                  minBalance = parsed;
+                }
 
                 if (existing != null) {
                   final index = _providers.indexWhere((p) => p.id == existing.id);
@@ -354,7 +360,7 @@ class _SettingsViewState extends State<SettingsView> {
                 final nav = Navigator.of(ctx);
                 await StorageService.saveProviders(_providers);
                 nav.pop();
-                _loadData();
+                if (mounted) setState(() {});
               },
               child: Text(
                 AppLocalizations.of('save'),
@@ -394,7 +400,7 @@ class _SettingsViewState extends State<SettingsView> {
           color: AppColors.faintText,
         ),
         filled: true,
-        fillColor: AppColors.surface(0.02),
+        fillColor: AppColors.overlay(0.02),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(8)),
           borderSide: BorderSide(color: borderColor),

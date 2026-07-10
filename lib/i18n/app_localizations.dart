@@ -74,6 +74,8 @@ class AppLocalizations {
     'follow_system': 'Follow System',
     'light': 'Light',
     'dark': 'Dark',
+    'low_balance_title': '{name}: low balance',
+    'low_balance_body': '{symbol} {remaining} remaining',
   };
 
   static const Map<String, String> _zh = {
@@ -128,5 +130,7 @@ class AppLocalizations {
     'follow_system': '跟随系统',
     'light': '浅色',
     'dark': '深色',
+    'low_balance_title': '{name}: 余额不足',
+    'low_balance_body': '剩余 {symbol}{remaining}',
   };
 }

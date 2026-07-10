@@ -25,32 +25,27 @@ class TrayPopupView extends StatefulWidget {
 }
 
 class _TrayPopupViewState extends State<TrayPopupView> {
+  Widget _loadingWidget() {
+    return Center(
+      child: SizedBox(
+        width: 16,
+        height: 16,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: AppColors.primaryText,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: BalanceFutureBuilder(
         future: widget.balanceFuture,
-        idle: Center(
-          child: SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: AppColors.primaryText,
-            ),
-          ),
-        ),
-        loading: Center(
-          child: SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: AppColors.primaryText,
-            ),
-          ),
-        ),
+        idle: _loadingWidget(),
+        loading: _loadingWidget(),
         builder: (context, data) => _buildContent(data),
         errorBuilder: (context, _) => _buildContent(null),
       ),

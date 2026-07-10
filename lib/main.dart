@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -11,23 +12,25 @@ import 'services/api_service.dart';
 import 'services/storage_service.dart';
 import 'ui/app_theme.dart';
 import 'ui/dashboard_view.dart';
+import 'ui/settings_view.dart';
 import 'ui/tray_popup_view.dart';
 
 const _kPopupSize = Size(250, 190);
 const _kFullSize = Size(520, 520);
 
+final _notifications = FlutterLocalNotificationsPlugin();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  PaintingBinding.instance.imageCache.maximumSize = 0;
-  PaintingBinding.instance.imageCache.maximumSizeBytes = 0;
 
-  FlutterError.onError = (details) {
-    if (details.exception is AssertionError &&
-        details.exception.toString().contains('KeyDownEvent')) {
-      return;
-    }
-    FlutterError.presentError(details);
-  };
+  const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+  const iosSettings = DarwinInitializationSettings();
+  const initSettings = InitializationSettings(
+    android: androidSettings,
+    iOS: iosSettings,
+    macOS: iosSettings,
+  );
+  await _notifications.initialize(initSettings);
 
   await windowManager.ensureInitialized();
 
@@ -87,23 +90,25 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
   }
 
   Future<void> _initTrayAndData() async {
+    final iconPath = Platform.isWindows
+        ? 'assets/app_icon.ico'
+        : 'assets/tray_icon.png';
     try {
-      final iconPath = Platform.isWindows
-          ? 'assets/app_icon.ico'
-          : 'assets/tray_icon.png';
       await trayManager.setIcon(iconPath);
     } catch (e) {
-      debugPrint('⚠ Tray setIcon error: $e');
+      debugPrint('Tray setIcon error: $e');
     }
     await _loadLocale();
     await _loadTheme();
     try {
       await trayManager.setToolTip(AppLocalizations.of('balance_monitor'));
     } catch (e) {
-      debugPrint('⚠ Tray setToolTip error: $e');
+      debugPrint('Tray setToolTip error: $e');
     }
-    await _syncAppState();
-    await _fetchBalance();
+    await _loadProviders();
+    if (_activeProvider != null && _activeProvider!.apiKey.isNotEmpty) {
+      await _fetchBalance();
+    }
     _scheduleTimer();
   }
 
@@ -111,17 +116,17 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
     final code = await StorageService.loadLocale();
     _localeCode = code;
     AppLocalizations.setLocale(code);
-    if (mounted) { setState(() {}); }
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadTheme() async {
     final mode = await StorageService.loadThemeMode();
     _themeMode = _parseThemeMode(mode);
     AppColors.setMode(_themeMode);
-    if (mounted) { setState(() {}); }
+    if (mounted) setState(() {});
   }
 
-  ThemeMode _parseThemeMode(String mode) {
+  static ThemeMode _parseThemeMode(String mode) {
     switch (mode) {
       case 'light':
         return ThemeMode.light;
@@ -132,20 +137,17 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
     }
   }
 
-  Future<void> _syncAppState() async {
+  Future<void> _loadProviders() async {
     try {
       final list = await StorageService.loadProviders();
       final savedId = await StorageService.loadSelectedId();
-      final active = list.firstWhere(
-        (p) => p.id == savedId,
-        orElse: () => list.first,
-      );
-      final savedLocale = await StorageService.loadLocale();
-      _localeCode = savedLocale;
-      AppLocalizations.setLocale(savedLocale);
-      final savedTheme = await StorageService.loadThemeMode();
-      _themeMode = _parseThemeMode(savedTheme);
-      AppColors.setMode(_themeMode);
+      ProviderConfig? active;
+      if (list.isNotEmpty) {
+        active = list.firstWhere(
+          (p) => p.id == savedId,
+          orElse: () => list.first,
+        );
+      }
       if (mounted) {
         setState(() {
           _providers = list;
@@ -154,7 +156,7 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
       }
       _updateTrayTitle();
     } catch (e) {
-      debugPrint('⚠ Sync error: $e');
+      debugPrint('Load providers error: $e');
     }
   }
 
@@ -172,7 +174,8 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
       _lastBalance = result;
       _onBalanceUpdated(result);
     } catch (_) {
-      // ignore fetch errors; show stale data
+      _lastBalance = null;
+      _onBalanceUpdated(null);
     } finally {
       _isFetching = false;
       if (mounted) setState(() {});
@@ -191,15 +194,59 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
   }
 
   Future<void> _onRefreshRequested() async {
-    await _syncAppState();
+    await _loadLocale();
+    await _loadTheme();
+    await _loadProviders();
     _scheduleTimer();
     await _fetchBalance();
   }
 
   void _onBalanceUpdated(BalanceResult? result) {
-    _lastBalance = result;
     _balanceColor = _calcBalanceColor(result, _activeProvider);
     _updateTrayTitle();
+    _checkLowBalanceNotification(result);
+    if (mounted) setState(() {});
+  }
+
+  void _checkLowBalanceNotification(BalanceResult? result) {
+    if (result == null || _activeProvider == null) return;
+    final provider = _activeProvider!;
+    if (provider.minBalance != null &&
+        result.remaining < provider.minBalance!) {
+      _showNotification(
+        AppLocalizations.of('low_balance_title', {'name': provider.name}),
+        AppLocalizations.of('low_balance_body', {
+          'symbol': result.currencySymbol,
+          'remaining': result.remaining.toStringAsFixed(2),
+        }),
+      );
+    }
+  }
+
+  Future<void> _showNotification(String title, String body) async {
+    try {
+      const androidDetails = AndroidNotificationDetails(
+        'low_balance',
+        'Low Balance',
+        channelDescription: 'Notifications when balance drops below threshold',
+        importance: Importance.high,
+        priority: Priority.high,
+      );
+      const iosDetails = DarwinNotificationDetails();
+      const details = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+        macOS: iosDetails,
+      );
+      await _notifications.show(
+        DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        title,
+        body,
+        details,
+      );
+    } catch (e) {
+      debugPrint('Notification error: $e');
+    }
   }
 
   Color _calcBalanceColor(BalanceResult? balance, ProviderConfig? provider) {
@@ -239,8 +286,17 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
         }),
       );
     } catch (e) {
-      debugPrint('⚠ Tray title update error: $e');
+      debugPrint('Tray title update error: $e');
     }
+  }
+
+  Future<void> _openSettings() async {
+    await _showFullWindow();
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const SettingsView()),
+    );
+    await _onRefreshRequested();
   }
 
   Future<void> _showTrayPopup() async {
@@ -288,7 +344,7 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
         await _showTrayPopup();
       }
     } catch (e) {
-      debugPrint('⚠ Tray toggle error: $e');
+      debugPrint('Tray toggle error: $e');
     }
   }
 
@@ -304,6 +360,7 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
 
   @override
   void onWindowBlur() async {
+    if (!Platform.isMacOS) return;
     await windowManager.hide();
     if (mounted) {
       setState(() {
@@ -314,6 +371,7 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
 
   @override
   void onWindowClose() async {
+    _refreshTimer?.cancel();
     await windowManager.hide();
     if (mounted) {
       setState(() {
@@ -322,85 +380,105 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
     }
   }
 
+  ThemeData _buildTheme() {
+    return ThemeData(
+      brightness: Brightness.light,
+      scaffoldBackgroundColor: AppColors.background,
+    );
+  }
+
+  ThemeData _buildDarkTheme() {
+    return ThemeData(
+      brightness: Brightness.dark,
+      scaffoldBackgroundColor: AppColors.background,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (_activeProvider == null || _providers.isEmpty) {
-      return MaterialApp(
-        key: const ValueKey('empty'),
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          fontFamily: Platform.isMacOS ? 'SF Pro Text' : 'Segoe UI',
-          scaffoldBackgroundColor: AppColors.background,
-        ),
-        darkTheme: ThemeData(
-          brightness: Brightness.dark,
-          fontFamily: Platform.isMacOS ? 'SF Pro Text' : 'Segoe UI',
-          scaffoldBackgroundColor: AppColors.background,
-        ),
-        themeMode: _themeMode,
-        home: Scaffold(
-          backgroundColor: AppColors.background,
-          body: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.dns_outlined,
-                  size: 48,
-                  color: AppColors.subtleText,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'No providers configured',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.mutedText,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Add one in Settings to get started',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.faintText,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
     return MaterialApp(
-      key: ValueKey('view_$_isFullView$_localeCode$_themeMode'),
+      key: ValueKey('$_localeCode$_themeMode'),
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.light,
-        fontFamily: Platform.isMacOS ? 'SF Pro Text' : 'Segoe UI',
-        scaffoldBackgroundColor: AppColors.background,
-      ),
-      darkTheme: ThemeData(
-        brightness: Brightness.dark,
-        fontFamily: Platform.isMacOS ? 'SF Pro Text' : 'Segoe UI',
-        scaffoldBackgroundColor: AppColors.background,
-      ),
+      theme: _buildTheme(),
+      darkTheme: _buildDarkTheme(),
       themeMode: _themeMode,
-      home: _isFullView
-          ? DashboardView(
-              activeProvider: _activeProvider!,
-              allProviders: _providers,
-              balanceFuture: _balanceFuture,
-              onRefresh: _fetchBalance,
-              onRefreshRequested: _onRefreshRequested,
-              balanceColor: _balanceColor,
-            )
-          : TrayPopupView(
-              activeProvider: _activeProvider!,
-              balanceFuture: _balanceFuture,
-              onOpenFullWindow: _showFullWindow,
-              balanceColor: _balanceColor,
+      home: _activeProvider == null || _providers.isEmpty
+          ? _buildEmptyState()
+          : _isFullView
+              ? DashboardView(
+                  activeProvider: _activeProvider!,
+                  allProviders: _providers,
+                  balanceFuture: _balanceFuture,
+                  onRefresh: _fetchBalance,
+                  onRefreshRequested: _onRefreshRequested,
+                  balanceColor: _balanceColor,
+                )
+              : TrayPopupView(
+                  activeProvider: _activeProvider!,
+                  balanceFuture: _balanceFuture,
+                  onOpenFullWindow: _showFullWindow,
+                  balanceColor: _balanceColor,
+                ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.dns_outlined,
+              size: 48,
+              color: AppColors.subtleText,
             ),
+            const SizedBox(height: 16),
+            Text(
+              AppLocalizations.of('no_providers'),
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.mutedText,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              AppLocalizations.of('add_first'),
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.faintText,
+              ),
+            ),
+            const SizedBox(height: 20),
+            TextButton.icon(
+              onPressed: _openSettings,
+              icon: Icon(
+                Icons.settings_outlined,
+                size: 16,
+                color: AppColors.secondaryText,
+              ),
+              label: Text(
+                AppLocalizations.of('settings'),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.secondaryText,
+                ),
+              ),
+              style: TextButton.styleFrom(
+                backgroundColor: AppColors.hoverBg,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

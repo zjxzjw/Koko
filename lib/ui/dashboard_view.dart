@@ -594,6 +594,15 @@ class _DashboardViewState extends State<DashboardView> {
                           color: AppColors.text(0.35),
                         ),
                       ),
+                    ] else if (item.promptTokens > 0 || item.completionTokens > 0) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        '${(item.totalTokens / 1000).toStringAsFixed(0)}k tokens',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppColors.text(0.35),
+                        ),
+                      ),
                     ],
                   ],
                 ),

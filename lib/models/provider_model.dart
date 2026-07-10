@@ -2,7 +2,7 @@ class ProviderConfig {
   final String id;
   final String name;
   final String baseUrl;
-  final String apiKey;
+  String apiKey;
   final String? customBalancePath;
   final int refreshIntervalMinutes;
   final double? minBalance;

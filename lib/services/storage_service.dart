@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/provider_model.dart';
 
@@ -10,11 +11,26 @@ class StorageService {
 
   static final Future<SharedPreferences> _prefs =
       SharedPreferences.getInstance();
+  static const _secure = FlutterSecureStorage();
+
+  static String _apiKeyKey(String id) => 'api_key_$id';
 
   static Future<void> saveProviders(List<ProviderConfig> providers) async {
     final prefs = await _prefs;
     final data = providers.map((p) => p.toMap()).toList();
     await prefs.setString(_keyProviders, jsonEncode(data));
+
+    for (final p in providers) {
+      await _secure.write(key: _apiKeyKey(p.id), value: p.apiKey);
+    }
+
+    final currentIds = providers.map((p) => p.id).toSet();
+    final allKeys = await _secure.readAll();
+    for (final key in allKeys.keys) {
+      if (key.startsWith('api_key_') && !currentIds.contains(key.substring(8))) {
+        await _secure.delete(key: key);
+      }
+    }
   }
 
   static Future<List<ProviderConfig>> loadProviders() async {
@@ -23,12 +39,23 @@ class StorageService {
     if (raw == null || raw.isEmpty) return _defaultProviders();
     try {
       final List decoded = jsonDecode(raw);
-      return decoded
+      final list = decoded
           .map((item) => ProviderConfig.fromMap(item as Map<String, dynamic>))
           .toList();
+      for (final p in list) {
+        final key = await _secure.read(key: _apiKeyKey(p.id));
+        if (key != null) {
+          _setApiKey(p, key);
+        }
+      }
+      return list;
     } catch (_) {
       return _defaultProviders();
     }
+  }
+
+  static void _setApiKey(ProviderConfig p, String key) {
+    p.apiKey = key;
   }
 
   static Future<void> saveSelectedId(String id) async {
@@ -65,16 +92,9 @@ class StorageService {
     return [
       ProviderConfig(
         id: ProviderConfig.generateId(),
-        name: 'DeepSeek',
+        name: 'Add your provider',
         baseUrl: 'https://api.deepseek.com',
-        apiKey: 'sk-***',
-        refreshIntervalMinutes: 10,
-      ),
-      ProviderConfig(
-        id: ProviderConfig.generateId(),
-        name: 'OpenAI',
-        baseUrl: 'https://api.openai.com',
-        apiKey: 'sk-***',
+        apiKey: '',
         refreshIntervalMinutes: 10,
       ),
     ];
