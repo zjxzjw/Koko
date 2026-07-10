@@ -2,76 +2,75 @@
 
 [English](README.md) | [中文](README_zh.md)
 
-> A minimalist menu-bar / system tray tool to monitor your LLM provider balances — DeepSeek, OpenAI, and any OpenAI-compatible API.
+> 一款极简菜单栏/系统托盘工具，用于监控 LLM 提供商余额 — 支持 DeepSeek、OpenAI 及任何兼容 OpenAI 的 API。
 
 ---
 
-## Screenshots / 界面预览
+## 界面预览
 
-| 仪表盘 (Dashboard) | 托盘弹窗 (Tray Popup) |
+| 仪表盘 | 托盘弹窗 |
 |---|---|
-| ![Dashboard](readme-1.png) | ![Tray Popup](readme-2.png) |
+| ![仪表盘](readme-1.png) | ![托盘弹窗](readme-2.png) |
 
-## Features
+## 功能特性
 
-- **System tray integration** — Lives in your macOS menu bar or Windows system tray. Click to see your balance at a glance, hide on blur.
-- **Two views** — Compact popup (balance only) and full dashboard with charts and model breakdown.
-- **Multi-provider** — Switch between DeepSeek, OpenAI, or add custom OpenAI-compatible endpoints.
-- **Balance monitoring** — Remaining balance, total used, and total topped-up with currency detection (USD/CNY/EUR/GBP).
-- **Daily cost chart** — Bar chart of daily spend for the current month.
-- **Model breakdown** — Per-model cost breakdown from the usage API.
-- **Local persistence** — API keys and provider configs stored locally via `shared_preferences`.
+- **系统托盘集成** — 常驻 macOS 菜单栏或 Windows 系统托盘，点击即可查看余额，窗口失焦自动隐藏。
+- **双重视图** — 紧凑弹窗（仅余额）与完整仪表盘（含图表和模型用量明细）。
+- **多提供商支持** — 在 DeepSeek、OpenAI 之间切换，或添加自定义 OpenAI 兼容接口。
+- **余额监控** — 实时展示剩余余额、累计使用量和总充值金额，自动识别货币类型（USD/CNY/EUR/GBP）。
+- **每日费用图表** — 当月每日支出的柱状图。
+- **模型用量明细** — 按模型展示用量 API 返回的费用明细。
+- **本地持久化** — 通过 `shared_preferences` 在本地存储 API Key 和提供商配置。
 
-##Supported Platforms
+## 支持平台
 
-| Platform |
+| 平台 |
 |----------|
 | macOS    |
 | Windows  |
-| Linux    |
 
-## Tech Stack
+## 技术栈
 
-| Dependency | Purpose |
+| 依赖 | 用途 |
 |---|---|
-| `window_manager` | Frameless, always-on-top window management |
-| `tray_manager` | System tray / menu bar icon and menu |
-| `dio` | HTTP client for provider APIs |
-| `fl_chart` | Daily cost bar chart |
-| `shared_preferences` | Local key-value storage |
+| `window_manager` | 无边框、置顶窗口管理 |
+| `tray_manager` | 系统托盘 / 菜单栏图标与菜单 |
+| `dio` | 提供商 API 的 HTTP 客户端 |
+| `fl_chart` | 每日费用柱状图 |
+| `shared_preferences` | 本地键值存储 |
 
-## Project Structure
+## 项目结构
 
 ```
 lib/
-├── main.dart                  # App entry, window/tray management, view switching
+├── main.dart                  # 应用入口，窗口/托盘管理，视图切换
 ├── models/
-│   └── provider_model.dart     # ProviderConfig, BalanceResult, ModelUsage, DailyUsage
+│   └── provider_model.dart     # ProviderConfig、BalanceResult、ModelUsage、DailyUsage
 ├── services/
-│   ├── api_service.dart        # DeepSeek & OpenAI balance/usage API calls
-│   └── storage_service.dart    # SharedPreferences persistence layer
+│   ├── api_service.dart        # DeepSeek & OpenAI 余额/用量 API 调用
+│   └── storage_service.dart    # SharedPreferences 持久化层
 └── ui/
-    ├── dashboard_view.dart     # Full dashboard with charts & model breakdown
-    ├── settings_view.dart      # Add / edit / delete provider configs
-    └── tray_popup_view.dart    # Compact balance popup
+    ├── dashboard_view.dart     # 完整仪表盘，含图表和模型用量明细
+    ├── settings_view.dart      # 添加/编辑/删除提供商配置
+    └── tray_popup_view.dart    # 紧凑余额弹窗
 ```
 
-## Getting Started
+## 快速开始
 
-### Prerequisites
+### 环境要求
 
 - [Flutter SDK](https://docs.flutter.dev/get-started/install) >= 3.10.7
-- macOS / Windows / Linux desktop development enabled (`flutter config --enable-<platform>-desktop`)
+- 已启用 macOS / Windows 桌面端开发（`flutter config --enable-macos-desktop` / `flutter config --enable-windows-desktop`）
 
-### Development
+### 开发
 
 ```bash
 git clone <repo-url> && cd koko
 flutter pub get
-flutter run -d macos    # or windows / linux
+flutter run -d macos    # 或 windows
 ```
 
-### Build
+### 构建
 
 ```bash
 # macOS
@@ -79,34 +78,31 @@ flutter build macos
 
 # Windows
 flutter build windows
-
-# Linux
-flutter build linux
 ```
 
-## Configuration
+## 配置
 
-On first launch, two default providers are seeded:
+首次启动时会自动生成两个默认提供商：
 
 - **DeepSeek** — `https://api.deepseek.com`
 - **OpenAI** — `https://api.openai.com`
 
-### Adding a provider
+### 添加提供商
 
-1. Open the dashboard and click **Preferences**.
-2. Tap the **+** button to add a new provider.
-3. Fill in:
-   - **Name** — e.g. `My Proxy`
-   - **Base URL** — Any OpenAI-compatible endpoint (e.g. `https://api.openai.com`, `https://api.deepseek.com`, or a custom proxy).
+1. 打开仪表盘，点击**偏好设置**。
+2. 点击 **+** 按钮添加新提供商。
+3. 填写以下信息：
+   - **名称** — 例如 `My Proxy`
+   - **基础 URL** — 任意 OpenAI 兼容接口（如 `https://api.openai.com`、`https://api.deepseek.com` 或自定义代理）
    - **API Key** — `sk-...`
-4. Save and switch to the new provider via the dropdown on the dashboard.
+4. 保存后，通过仪表盘上的下拉菜单切换到新提供商。
 
-### Supported API formats
+### 支持的 API 格式
 
-| Provider | Balance Endpoint | Usage Endpoint |
+| 提供商 | 余额接口 | 用量接口 |
 |---|---|---|
 | DeepSeek | `GET /user/balance` | `GET /v1/usage/metrics` |
 | OpenAI | `GET /v1/organization/costs` | `GET /v1/usage` |
-| Custom | Auto-detects DeepSeek or OpenAI style | Falls back to whichever succeeds |
+| 自定义 | 自动识别 DeepSeek 或 OpenAI 风格 | 回退到成功响应的接口 |
 
-OpenAI billing requires an **Admin API key** created at [platform.openai.com → Settings → Admin Keys](https://platform.openai.com).
+OpenAI 账单查询需要使用**管理员 API Key**，可在 [platform.openai.com → Settings → Admin Keys](https://platform.openai.com) 创建。
