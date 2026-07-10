@@ -18,6 +18,8 @@ const _kFullSize = Size(520, 520);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  PaintingBinding.instance.imageCache.maximumSize = 0;
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 0;
 
   FlutterError.onError = (details) {
     if (details.exception is AssertionError &&
@@ -65,6 +67,7 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
   ThemeMode _themeMode = ThemeMode.system;
   Future<BalanceResult>? _balanceFuture;
   Timer? _refreshTimer;
+  bool _isFetching = false;
   Color _balanceColor = AppColors.primaryText;
 
   @override
@@ -156,19 +159,24 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
   }
 
   Future<void> _fetchBalance() async {
-    if (_activeProvider == null) return;
+    if (_activeProvider == null || _isFetching) return;
+    _isFetching = true;
     final future = ApiService.fetchBalance(_activeProvider!);
-    if (mounted) {
-      setState(() {
-        _balanceFuture = future;
-      });
-    }
     try {
+      if (mounted) {
+        setState(() {
+          _balanceFuture = future;
+        });
+      }
       final result = await future;
       _lastBalance = result;
       _onBalanceUpdated(result);
-    } catch (_) {}
-    if (mounted) { setState(() {}); }
+    } catch (_) {
+      // ignore fetch errors; show stale data
+    } finally {
+      _isFetching = false;
+      if (mounted) setState(() {});
+    }
   }
 
   void _scheduleTimer() {

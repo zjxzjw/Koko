@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/provider_model.dart';
@@ -10,7 +13,15 @@ class ApiService {
       receiveTimeout: const Duration(seconds: 10),
       validateStatus: (_) => true,
     ),
-  );
+  )..httpClientAdapter = IOHttpClientAdapter(
+      createHttpClient: () {
+        final client = HttpClient();
+        client.connectionTimeout = const Duration(seconds: 10);
+        client.maxConnectionsPerHost = 1;
+        client.idleTimeout = const Duration(seconds: 5);
+        return client;
+      },
+    );
 
   static Future<BalanceResult> fetchBalance(ProviderConfig config) async {
     final base = config.baseUrl
