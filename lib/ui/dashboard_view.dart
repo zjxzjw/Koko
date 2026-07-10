@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../i18n/app_localizations.dart';
 import '../models/provider_model.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
@@ -79,7 +80,7 @@ class _DashboardViewState extends State<DashboardView> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
-                  'REMAINING BALANCE',
+                  AppLocalizations.of('remaining_balance'),
                   style: TextStyle(
                     fontSize: 10,
                     color: Colors.black.withValues(alpha: 0.35),
@@ -108,8 +109,11 @@ class _DashboardViewState extends State<DashboardView> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
-                    'Used ${data.currencySymbol}${data.used.toStringAsFixed(2)}  ·  '
-                    'Total ${data.currencySymbol}${data.total.toStringAsFixed(2)}',
+                    AppLocalizations.of('used_total', {
+                      'symbol': data.currencySymbol,
+                      'used': data.used.toStringAsFixed(2),
+                      'total': data.total.toStringAsFixed(2),
+                    }),
                     style: TextStyle(
                       fontSize: 11,
                       color: Colors.black.withValues(alpha: 0.35),
@@ -123,16 +127,16 @@ class _DashboardViewState extends State<DashboardView> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
                     children: [
-                      _chartLabel('Daily Cost'),
+                      _chartLabel(AppLocalizations.of('daily_cost')),
                       const Spacer(),
                       _chartChip(
-                        'Cost',
+                        AppLocalizations.of('cost'),
                         '${data.currencySymbol}${data.used.toStringAsFixed(2)}',
                         const Color(0xFF3B82F6),
                       ),
                       const SizedBox(width: 12),
                       _chartChip(
-                        'Tokens',
+                        AppLocalizations.of('tokens'),
                         '${_fmtTokens(data.daily.fold<int>(0, (s, d) => s + d.tokens))}',
                         const Color(0xFF10B981),
                       ),
@@ -152,7 +156,7 @@ class _DashboardViewState extends State<DashboardView> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
-                  'MODEL BREAKDOWN',
+                  AppLocalizations.of('model_breakdown'),
                   style: TextStyle(
                     fontSize: 10,
                     color: Colors.black.withValues(alpha: 0.35),
@@ -400,7 +404,7 @@ class _DashboardViewState extends State<DashboardView> {
               onPressed: _refreshData,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-              tooltip: 'Refresh',
+              tooltip: AppLocalizations.of('refresh'),
             ),
             IconButton(
               icon: Icon(
@@ -411,7 +415,7 @@ class _DashboardViewState extends State<DashboardView> {
               onPressed: () => windowManager.hide(),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-              tooltip: 'Hide to menu bar',
+              tooltip: AppLocalizations.of('hide'),
             ),
           ],
         ),
@@ -433,7 +437,7 @@ class _DashboardViewState extends State<DashboardView> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Unable to reach API',
+                    AppLocalizations.of('api_unreachable'),
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.black.withValues(alpha: 0.45),
@@ -441,7 +445,7 @@ class _DashboardViewState extends State<DashboardView> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Check your API key and network',
+                    AppLocalizations.of('check_network'),
                     style: TextStyle(
                       fontSize: 11,
                       color: Colors.black.withValues(alpha: 0.25),
@@ -460,7 +464,7 @@ class _DashboardViewState extends State<DashboardView> {
     if (data.details.isEmpty) {
       return Center(
         child: Text(
-          'No usage data yet',
+          AppLocalizations.of('no_data'),
           style: TextStyle(
             fontSize: 13,
             color: Colors.black.withValues(alpha: 0.35),
@@ -500,8 +504,12 @@ class _DashboardViewState extends State<DashboardView> {
                     if (item.totalTokens > 0) ...[
                       const SizedBox(height: 4),
                       Text(
-                        'Tokens: In ${(item.promptTokens / 1000).toStringAsFixed(0)}k'
-                        ' | Out ${(item.completionTokens / 1000).toStringAsFixed(0)}k',
+                        AppLocalizations.of('tokens_in_out', {
+                          'in_tokens':
+                              (item.promptTokens / 1000).toStringAsFixed(0),
+                          'out_tokens':
+                              (item.completionTokens / 1000).toStringAsFixed(0),
+                        }),
                         style: TextStyle(
                           fontSize: 10,
                           color: Colors.black.withValues(alpha: 0.35),
@@ -544,7 +552,7 @@ class _DashboardViewState extends State<DashboardView> {
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
-          'Preferences...',
+          AppLocalizations.of('preferences'),
           style: TextStyle(
             fontSize: 12,
             color: Colors.black.withValues(alpha: 0.45),

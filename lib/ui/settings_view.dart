@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../i18n/app_localizations.dart';
 import '../models/provider_model.dart';
 import '../services/storage_service.dart';
 
@@ -12,6 +13,7 @@ class SettingsView extends StatefulWidget {
 class _SettingsViewState extends State<SettingsView> {
   List<ProviderConfig> _providers = [];
   bool _loading = true;
+  String _localeCode = 'en';
 
   final _nameController = TextEditingController();
   final _urlController = TextEditingController();
@@ -33,10 +35,18 @@ class _SettingsViewState extends State<SettingsView> {
 
   Future<void> _loadData() async {
     final list = await StorageService.loadProviders();
+    final locale = await StorageService.loadLocale();
     setState(() {
       _providers = list;
+      _localeCode = locale;
       _loading = false;
     });
+  }
+
+  Future<void> _changeLocale(String code) async {
+    AppLocalizations.setLocale(code);
+    await StorageService.saveLocale(code);
+    setState(() => _localeCode = code);
   }
 
   Future<void> _deleteProvider(ProviderConfig p) async {
@@ -44,16 +54,17 @@ class _SettingsViewState extends State<SettingsView> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12))),
         title: Text(
-          'Remove provider?',
+          AppLocalizations.of('remove_provider'),
           style: TextStyle(
             fontSize: 14,
             color: Colors.black.withValues(alpha: 0.85),
           ),
         ),
         content: Text(
-          'Delete "${p.name}"? This cannot be undone.',
+          AppLocalizations.of('delete_confirm', {'name': p.name}),
           style: TextStyle(
             fontSize: 12,
             color: Colors.black.withValues(alpha: 0.4),
@@ -63,7 +74,7 @@ class _SettingsViewState extends State<SettingsView> {
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child: Text(
-              'Cancel',
+              AppLocalizations.of('cancel'),
               style: TextStyle(color: Colors.black.withValues(alpha: 0.55)),
             ),
           ),
@@ -100,9 +111,12 @@ class _SettingsViewState extends State<SettingsView> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12))),
         title: Text(
-          existing == null ? 'Add Provider' : 'Edit Provider',
+          existing == null
+              ? AppLocalizations.of('add_provider')
+              : AppLocalizations.of('edit_provider'),
           style: TextStyle(
             fontSize: 14,
             color: Colors.black.withValues(alpha: 0.85),
@@ -111,27 +125,24 @@ class _SettingsViewState extends State<SettingsView> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildField('Name', _nameController, hint: 'e.g. DeepSeek'),
+            _buildField(
+                AppLocalizations.of('name'), _nameController,
+                hint: AppLocalizations.of('hint_name')),
             const SizedBox(height: 12),
             _buildField(
-              'Base URL (OpenAI-compatible)',
-              _urlController,
-              hint: 'https://api.deepseek.com',
-            ),
+                AppLocalizations.of('base_url'), _urlController,
+                hint: AppLocalizations.of('hint_url')),
             const SizedBox(height: 12),
             _buildField(
-              'API Key',
-              _keyController,
-              hint: 'sk-...',
-              obscure: true,
-            ),
+                AppLocalizations.of('api_key'), _keyController,
+                hint: AppLocalizations.of('hint_key'), obscure: true),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(
-              'Cancel',
+              AppLocalizations.of('cancel'),
               style: TextStyle(color: Colors.black.withValues(alpha: 0.55)),
             ),
           ),
@@ -162,7 +173,7 @@ class _SettingsViewState extends State<SettingsView> {
               _loadData();
             },
             child: Text(
-              'Save',
+              AppLocalizations.of('save'),
               style: TextStyle(color: Colors.black.withValues(alpha: 0.85)),
             ),
           ),
@@ -199,15 +210,15 @@ class _SettingsViewState extends State<SettingsView> {
         filled: true,
         fillColor: Colors.black.withValues(alpha: 0.02),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.zero,
+          borderRadius: BorderRadius.all(Radius.circular(8)),
           borderSide: BorderSide(color: borderColor),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.zero,
+          borderRadius: BorderRadius.all(Radius.circular(8)),
           borderSide: BorderSide(color: borderColor),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.zero,
+          borderRadius: BorderRadius.all(Radius.circular(8)),
           borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.35)),
         ),
         contentPadding: const EdgeInsets.symmetric(
@@ -224,7 +235,7 @@ class _SettingsViewState extends State<SettingsView> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(
-          'Model Providers',
+          AppLocalizations.of('settings'),
           style: TextStyle(
             fontSize: 14,
             color: Colors.black.withValues(alpha: 0.85),
@@ -253,81 +264,147 @@ class _SettingsViewState extends State<SettingsView> {
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
             )
-          : _providers.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.dns_outlined,
-                    size: 36,
-                    color: Colors.black.withValues(alpha: 0.2),
+          : Column(
+              children: [
+                _buildLanguageSelector(),
+                const Divider(height: 1),
+                Expanded(
+                  child: _providers.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.dns_outlined,
+                                size: 36,
+                                color: Colors.black.withValues(alpha: 0.2),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                AppLocalizations.of('no_providers'),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.black.withValues(alpha: 0.45),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton.icon(
+                                onPressed: () => _showEditor(),
+                                icon: const Icon(Icons.add, size: 16),
+                                label: Text(
+                                    AppLocalizations.of('add_first')),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor:
+                                      Colors.black.withValues(alpha: 0.06),
+                                  foregroundColor:
+                                      Colors.black.withValues(alpha: 0.75),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: _providers.length,
+                          itemBuilder: (context, idx) {
+                            final p = _providers[idx];
+                            return ListTile(
+                              title: Text(
+                                p.name,
+                                style: TextStyle(
+                                  color: Colors.black.withValues(alpha: 0.85),
+                                  fontSize: 13,
+                                ),
+                              ),
+                              subtitle: Text(
+                                p.baseUrl,
+                                style: TextStyle(
+                                  color: Colors.black.withValues(alpha: 0.4),
+                                  fontSize: 11,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(
+                                      Icons.edit_outlined,
+                                      size: 16,
+                                      color: Colors.black.withValues(alpha: 0.4),
+                                    ),
+                                    onPressed: () => _showEditor(existing: p),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.delete_outline,
+                                      size: 16,
+                                      color: Colors.redAccent,
+                                    ),
+                                    onPressed: () => _deleteProvider(p),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildLanguageSelector() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          Icon(Icons.language_outlined,
+              size: 16, color: Colors.black.withValues(alpha: 0.45)),
+          const SizedBox(width: 8),
+          Text(
+            AppLocalizations.of('language'),
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.black.withValues(alpha: 0.7),
+            ),
+          ),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _localeCode,
+                dropdownColor: Colors.white,
+                isDense: true,
+                padding: EdgeInsets.zero,
+                icon: Icon(Icons.keyboard_arrow_down,
+                    size: 18, color: Colors.black.withValues(alpha: 0.4)),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.black.withValues(alpha: 0.85),
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'en',
+                    child: Text('English'),
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'No providers configured',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.black.withValues(alpha: 0.45),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: () => _showEditor(),
-                    icon: const Icon(Icons.add, size: 16),
-                    label: const Text('Add your first provider'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black.withValues(alpha: 0.06),
-                      foregroundColor: Colors.black.withValues(alpha: 0.75),
-                    ),
+                  DropdownMenuItem(
+                    value: 'zh',
+                    child: Text('中文'),
                   ),
                 ],
+                onChanged: (v) {
+                  if (v != null) _changeLocale(v);
+                },
               ),
-            )
-          : ListView.builder(
-              itemCount: _providers.length,
-              itemBuilder: (context, idx) {
-                final p = _providers[idx];
-                return ListTile(
-                  title: Text(
-                    p.name,
-                    style: TextStyle(
-                      color: Colors.black.withValues(alpha: 0.85),
-                      fontSize: 13,
-                    ),
-                  ),
-                  subtitle: Text(
-                    p.baseUrl,
-                    style: TextStyle(
-                      color: Colors.black.withValues(alpha: 0.4),
-                      fontSize: 11,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          Icons.edit_outlined,
-                          size: 16,
-                          color: Colors.black.withValues(alpha: 0.4),
-                        ),
-                        onPressed: () => _showEditor(existing: p),
-                      ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.delete_outline,
-                          size: 16,
-                          color: Colors.redAccent,
-                        ),
-                        onPressed: () => _deleteProvider(p),
-                      ),
-                    ],
-                  ),
-                );
-              },
             ),
+          ),
+        ],
+      ),
     );
   }
 }

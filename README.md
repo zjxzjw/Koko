@@ -104,7 +104,3 @@ On first launch, two default providers are seeded:
 | Custom | Auto-detects DeepSeek or OpenAI style | Falls back to whichever succeeds |
 
 OpenAI billing requires an **Admin API key** created at [platform.openai.com → Settings → Admin Keys](https://platform.openai.com).
-
----
-
-<p align="center">Made with ❤️ for the LLM community</p>

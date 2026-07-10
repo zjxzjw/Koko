@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
+import 'i18n/app_localizations.dart';
 import 'models/provider_model.dart';
 import 'services/storage_service.dart';
 import 'ui/dashboard_view.dart';
@@ -80,12 +81,21 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
     } catch (e) {
       debugPrint('⚠ Tray setIcon error: $e');
     }
+    await _loadLocale();
     try {
-      await trayManager.setToolTip('KOKO — LLM Balance Monitor');
+      await trayManager.setToolTip(
+        AppLocalizations.of('balance_monitor'),
+      );
     } catch (e) {
       debugPrint('⚠ Tray setToolTip error: $e');
     }
     await _syncAppState();
+  }
+
+  Future<void> _loadLocale() async {
+    final code = await StorageService.loadLocale();
+    AppLocalizations.setLocale(code);
+    if (mounted) setState(() {});
   }
 
   Future<void> _syncAppState() async {
@@ -96,6 +106,8 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
         (p) => p.id == savedId,
         orElse: () => list.first,
       );
+      final savedLocale = await StorageService.loadLocale();
+      AppLocalizations.setLocale(savedLocale);
       if (mounted) {
         setState(() {
           _providers = list;
@@ -123,13 +135,19 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
     } else {
       title = provider.name;
     }
+    final remaining =
+        _lastBalance?.remaining.toStringAsFixed(2) ?? '--.--';
+    final used = _lastBalance?.used.toStringAsFixed(2) ?? '--.--';
     final sym = _lastBalance?.currencySymbol ?? '\$';
     try {
       trayManager.setTitle(title);
       trayManager.setToolTip(
-        '${provider.name}\n'
-        'Remaining: $sym${_lastBalance?.remaining.toStringAsFixed(2) ?? "--.--"}\n'
-        'Used: $sym${_lastBalance?.used.toStringAsFixed(2) ?? "--.--"}',
+        AppLocalizations.of('balance_monitor_long', {
+          'name': provider.name,
+          'symbol': sym,
+          'remaining': remaining,
+          'used': used,
+        }),
       );
     } catch (e) {
       debugPrint('⚠ Tray title update error: $e');
@@ -202,6 +220,7 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
     }
 
     return MaterialApp(
+      key: ValueKey('view_$_isFullView'),
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.light,

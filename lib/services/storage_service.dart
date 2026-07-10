@@ -5,6 +5,7 @@ import '../models/provider_model.dart';
 class StorageService {
   static const String _keyProviders = 'custom_providers';
   static const String _keySelected = 'selected_provider_id';
+  static const String _keyLocale = 'app_locale';
 
   static Future<void> saveProviders(List<ProviderConfig> providers) async {
     final prefs = await SharedPreferences.getInstance();
@@ -34,6 +35,16 @@ class StorageService {
   static Future<String?> loadSelectedId() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_keySelected);
+  }
+
+  static Future<void> saveLocale(String locale) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyLocale, locale);
+  }
+
+  static Future<String> loadLocale() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyLocale) ?? 'en';
   }
 
   static List<ProviderConfig> _defaultProviders() {

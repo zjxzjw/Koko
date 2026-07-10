@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../i18n/app_localizations.dart';
 import '../models/provider_model.dart';
 import '../services/api_service.dart';
 
@@ -101,7 +102,7 @@ class _TrayPopupViewState extends State<TrayPopupView> {
                 const Spacer(),
                 // Balance
                 Text(
-                  'REMAINING BALANCE',
+                  AppLocalizations.of('remaining_balance'),
                   style: TextStyle(
                     fontSize: 10,
                     color: Colors.black.withValues(alpha: 0.35),
@@ -112,7 +113,7 @@ class _TrayPopupViewState extends State<TrayPopupView> {
                 const SizedBox(height: 2),
                 if (snapshot.hasError)
                   Text(
-                    'API unreachable',
+                    AppLocalizations.of('api_unreachable_short'),
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w400,
@@ -133,7 +134,10 @@ class _TrayPopupViewState extends State<TrayPopupView> {
                   ),
                   if (data != null)
                     Text(
-                      'Used ${data.currencySymbol}${data.used.toStringAsFixed(2)}',
+                      AppLocalizations.of('used_label', {
+                        'symbol': data.currencySymbol,
+                        'used': data.used.toStringAsFixed(2),
+                      }),
                       style: TextStyle(
                         fontSize: 11,
                         color: Colors.black.withValues(alpha: 0.35),
@@ -152,7 +156,7 @@ class _TrayPopupViewState extends State<TrayPopupView> {
                       color: Colors.black.withValues(alpha: 0.55),
                     ),
                     label: Text(
-                      'Open Dashboard',
+                      AppLocalizations.of('open_dashboard'),
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.black.withValues(alpha: 0.55),
