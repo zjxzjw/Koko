@@ -69,6 +69,11 @@ class AppLocalizations {
     'every_60m': 'Every 60 min',
     'min_balance': 'Min Balance',
     'hint_min_balance': 'e.g. 10.00 (optional)',
+    'appearance': 'Appearance',
+    'theme_mode': 'Theme',
+    'follow_system': 'Follow System',
+    'light': 'Light',
+    'dark': 'Dark',
   };
 
   static const Map<String, String> _zh = {
@@ -118,5 +123,10 @@ class AppLocalizations {
     'every_60m': '每 60 分钟',
     'min_balance': '最低余额',
     'hint_min_balance': '例如 10.00（可选）',
+    'appearance': '外观',
+    'theme_mode': '主题模式',
+    'follow_system': '跟随系统',
+    'light': '浅色',
+    'dark': '深色',
   };
 }

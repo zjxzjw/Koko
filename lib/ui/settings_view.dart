@@ -15,6 +15,7 @@ class _SettingsViewState extends State<SettingsView> {
   List<ProviderConfig> _providers = [];
   bool _loading = true;
   String _localeCode = 'en';
+  String _themeMode = 'system';
 
   final _nameController = TextEditingController();
   final _urlController = TextEditingController();
@@ -39,9 +40,11 @@ class _SettingsViewState extends State<SettingsView> {
   Future<void> _loadData() async {
     final list = await StorageService.loadProviders();
     final locale = await StorageService.loadLocale();
+    final theme = await StorageService.loadThemeMode();
     setState(() {
       _providers = list;
       _localeCode = locale;
+      _themeMode = theme;
       _loading = false;
     });
   }
@@ -52,11 +55,16 @@ class _SettingsViewState extends State<SettingsView> {
     setState(() => _localeCode = code);
   }
 
+  Future<void> _changeTheme(String mode) async {
+    await StorageService.saveThemeMode(mode);
+    setState(() => _themeMode = mode);
+  }
+
   Future<void> _deleteProvider(ProviderConfig p) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.dialogBg,
         shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.all(Radius.circular(12))),
         title: Text(
@@ -118,7 +126,7 @@ class _SettingsViewState extends State<SettingsView> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.dialogBg,
           shape: const RoundedRectangleBorder(
               borderRadius: BorderRadius.all(Radius.circular(12))),
           title: Text(
@@ -168,7 +176,7 @@ class _SettingsViewState extends State<SettingsView> {
                         ),
                       ),
                       padding: WidgetStateProperty.all(EdgeInsets.zero),
-                      backgroundColor: WidgetStateProperty.all(Colors.white),
+                      backgroundColor: WidgetStateProperty.all(AppColors.menuBg),
                       elevation: WidgetStateProperty.all(4),
                     ),
                     builder: (context, controller, child) {
@@ -409,7 +417,7 @@ class _SettingsViewState extends State<SettingsView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(
           AppLocalizations.of('settings'),
@@ -445,6 +453,7 @@ class _SettingsViewState extends State<SettingsView> {
               children: [
                 _buildSectionHeader(AppLocalizations.of('general_settings')),
                 _buildLanguageSelector(),
+                _buildThemeSelector(),
                 const SizedBox(height: 8),
                 _buildSectionHeader(AppLocalizations.of('model_settings')),
                 Expanded(
@@ -530,6 +539,149 @@ class _SettingsViewState extends State<SettingsView> {
     );
   }
 
+  Widget _buildThemeSelector() {
+    final label = switch (_themeMode) {
+      'light' => AppLocalizations.of('light'),
+      'dark' => AppLocalizations.of('dark'),
+      _ => AppLocalizations.of('follow_system'),
+    };
+    final icon = switch (_themeMode) {
+      'light' => Icons.light_mode,
+      'dark' => Icons.dark_mode,
+      _ => Icons.brightness_auto,
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: AppColors.mutedText),
+          const SizedBox(width: 8),
+          Text(
+            AppLocalizations.of('theme_mode'),
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.text(0.7),
+            ),
+          ),
+          const Spacer(),
+          MenuAnchor(
+            alignmentOffset: const Offset(0, 4),
+            style: MenuStyle(
+              shape: WidgetStateProperty.all(
+                RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              padding: WidgetStateProperty.all(EdgeInsets.zero),
+              backgroundColor: WidgetStateProperty.all(AppColors.menuBg),
+              elevation: WidgetStateProperty.all(4),
+            ),
+            builder: (BuildContext context, MenuController controller,
+                Widget? child) {
+              return InkWell(
+                onTap: () {
+                  if (controller.isOpen) {
+                    controller.close();
+                  } else {
+                    controller.open();
+                  }
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.hoverBg,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.primaryText,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.keyboard_arrow_down,
+                        size: 18,
+                        color: AppColors.accentText,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+            menuChildren: [
+              MenuItemButton(
+                onPressed: () => _changeTheme('system'),
+                style: MenuItemButton.styleFrom(
+                  minimumSize: const Size(120, 32),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                ),
+                child: Text(
+                  AppLocalizations.of('follow_system'),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: _themeMode == 'system'
+                        ? FontWeight.w600
+                        : FontWeight.w400,
+                  ),
+                ),
+              ),
+              MenuItemButton(
+                onPressed: () => _changeTheme('light'),
+                style: MenuItemButton.styleFrom(
+                  minimumSize: const Size(120, 32),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                ),
+                child: Text(
+                  AppLocalizations.of('light'),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: _themeMode == 'light'
+                        ? FontWeight.w600
+                        : FontWeight.w400,
+                  ),
+                ),
+              ),
+              MenuItemButton(
+                onPressed: () => _changeTheme('dark'),
+                style: MenuItemButton.styleFrom(
+                  minimumSize: const Size(120, 32),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                ),
+                child: Text(
+                  AppLocalizations.of('dark'),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: _themeMode == 'dark'
+                        ? FontWeight.w600
+                        : FontWeight.w400,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildLanguageSelector() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -555,7 +707,7 @@ class _SettingsViewState extends State<SettingsView> {
                 ),
               ),
               padding: WidgetStateProperty.all(EdgeInsets.zero),
-              backgroundColor: WidgetStateProperty.all(Colors.white),
+              backgroundColor: WidgetStateProperty.all(AppColors.menuBg),
               elevation: WidgetStateProperty.all(4),
             ),
             builder: (BuildContext context, MenuController controller,

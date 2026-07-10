@@ -28,7 +28,7 @@ class _TrayPopupViewState extends State<TrayPopupView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       body: BalanceFutureBuilder(
         future: widget.balanceFuture,
         idle: const Center(

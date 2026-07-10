@@ -62,6 +62,7 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
   BalanceResult? _lastBalance;
   bool _isFullView = true;
   String _localeCode = 'en';
+  ThemeMode _themeMode = ThemeMode.system;
   Future<BalanceResult>? _balanceFuture;
   Timer? _refreshTimer;
   Color _balanceColor = AppColors.primaryText;
@@ -92,6 +93,7 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
       debugPrint('⚠ Tray setIcon error: $e');
     }
     await _loadLocale();
+    await _loadTheme();
     try {
       await trayManager.setToolTip(AppLocalizations.of('balance_monitor'));
     } catch (e) {
@@ -109,6 +111,24 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
     if (mounted) { setState(() {}); }
   }
 
+  Future<void> _loadTheme() async {
+    final mode = await StorageService.loadThemeMode();
+    _themeMode = _parseThemeMode(mode);
+    AppColors.setMode(_themeMode);
+    if (mounted) { setState(() {}); }
+  }
+
+  ThemeMode _parseThemeMode(String mode) {
+    switch (mode) {
+      case 'light':
+        return ThemeMode.light;
+      case 'dark':
+        return ThemeMode.dark;
+      default:
+        return ThemeMode.system;
+    }
+  }
+
   Future<void> _syncAppState() async {
     try {
       final list = await StorageService.loadProviders();
@@ -120,6 +140,9 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
       final savedLocale = await StorageService.loadLocale();
       _localeCode = savedLocale;
       AppLocalizations.setLocale(savedLocale);
+      final savedTheme = await StorageService.loadThemeMode();
+      _themeMode = _parseThemeMode(savedTheme);
+      AppColors.setMode(_themeMode);
       if (mounted) {
         setState(() {
           _providers = list;
@@ -299,10 +322,16 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           fontFamily: Platform.isMacOS ? 'SF Pro Text' : 'Segoe UI',
-          scaffoldBackgroundColor: Colors.white,
+          scaffoldBackgroundColor: AppColors.background,
         ),
+        darkTheme: ThemeData(
+          brightness: Brightness.dark,
+          fontFamily: Platform.isMacOS ? 'SF Pro Text' : 'Segoe UI',
+          scaffoldBackgroundColor: AppColors.background,
+        ),
+        themeMode: _themeMode,
         home: Scaffold(
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.background,
           body: Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -336,13 +365,19 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
     }
 
     return MaterialApp(
-      key: ValueKey('view_$_isFullView$_localeCode'),
+      key: ValueKey('view_$_isFullView$_localeCode$_themeMode'),
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.light,
         fontFamily: Platform.isMacOS ? 'SF Pro Text' : 'Segoe UI',
-        scaffoldBackgroundColor: Colors.white,
+        scaffoldBackgroundColor: AppColors.background,
       ),
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        fontFamily: Platform.isMacOS ? 'SF Pro Text' : 'Segoe UI',
+        scaffoldBackgroundColor: AppColors.background,
+      ),
+      themeMode: _themeMode,
       home: _isFullView
           ? DashboardView(
               activeProvider: _activeProvider!,

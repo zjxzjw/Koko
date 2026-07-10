@@ -6,6 +6,7 @@ class StorageService {
   static const String _keyProviders = 'custom_providers';
   static const String _keySelected = 'selected_provider_id';
   static const String _keyLocale = 'app_locale';
+  static const String _keyThemeMode = 'theme_mode';
 
   static final Future<SharedPreferences> _prefs =
       SharedPreferences.getInstance();
@@ -48,6 +49,16 @@ class StorageService {
   static Future<String> loadLocale() async {
     final prefs = await _prefs;
     return prefs.getString(_keyLocale) ?? 'en';
+  }
+
+  static Future<void> saveThemeMode(String mode) async {
+    final prefs = await _prefs;
+    await prefs.setString(_keyThemeMode, mode);
+  }
+
+  static Future<String> loadThemeMode() async {
+    final prefs = await _prefs;
+    return prefs.getString(_keyThemeMode) ?? 'system';
   }
 
   static List<ProviderConfig> _defaultProviders() {

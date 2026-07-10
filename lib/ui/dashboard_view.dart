@@ -48,7 +48,7 @@ class _DashboardViewState extends State<DashboardView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       body: BalanceFutureBuilder(
         future: widget.balanceFuture,
         builder: (context, data) => _buildContent(data, null),
@@ -338,7 +338,7 @@ class _DashboardViewState extends State<DashboardView> {
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               padding: WidgetStateProperty.all(EdgeInsets.zero),
-              backgroundColor: WidgetStateProperty.all(Colors.white),
+              backgroundColor: WidgetStateProperty.all(AppColors.menuBg),
               elevation: WidgetStateProperty.all(4),
             ),
             builder:
