@@ -172,10 +172,10 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
       }
       final result = await future;
       _lastBalance = result;
-      _onBalanceUpdated(result);
+      await _onBalanceUpdated(result);
     } catch (_) {
       _lastBalance = null;
-      _onBalanceUpdated(null);
+      await _onBalanceUpdated(null);
     } finally {
       _isFetching = false;
       if (mounted) setState(() {});
@@ -201,25 +201,31 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
     await _fetchBalance();
   }
 
-  void _onBalanceUpdated(BalanceResult? result) {
+  Future<void> _onBalanceUpdated(BalanceResult? result) async {
     _balanceColor = _calcBalanceColor(result, _activeProvider);
     _updateTrayTitle();
-    _checkLowBalanceNotification(result);
+    await _checkLowBalanceNotification(result);
     if (mounted) setState(() {});
   }
 
-  void _checkLowBalanceNotification(BalanceResult? result) {
+  Future<void> _checkLowBalanceNotification(BalanceResult? result) async {
     if (result == null || _activeProvider == null) return;
     final provider = _activeProvider!;
     if (provider.minBalance != null &&
         result.remaining < provider.minBalance!) {
-      _showNotification(
-        AppLocalizations.of('low_balance_title', {'name': provider.name}),
-        AppLocalizations.of('low_balance_body', {
-          'symbol': result.currencySymbol,
-          'remaining': result.remaining.toStringAsFixed(2),
-        }),
-      );
+      final lastTime = await StorageService.loadLastNotifyTime(provider.id);
+      final now = DateTime.now().millisecondsSinceEpoch;
+      const twelveHours = 12 * 60 * 60 * 1000;
+      if (now - lastTime >= twelveHours) {
+        await StorageService.saveLastNotifyTime(provider.id);
+        await _showNotification(
+          AppLocalizations.of('low_balance_title', {'name': provider.name}),
+          AppLocalizations.of('low_balance_body', {
+            'symbol': result.currencySymbol,
+            'remaining': result.remaining.toStringAsFixed(2),
+          }),
+        );
+      }
     }
   }
 
