@@ -58,6 +58,7 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
   ProviderConfig? _activeProvider;
   BalanceResult? _lastBalance;
   bool _isFullView = true;
+  String _localeCode = 'en';
 
   @override
   void initState() {
@@ -96,6 +97,7 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
 
   Future<void> _loadLocale() async {
     final code = await StorageService.loadLocale();
+    _localeCode = code;
     AppLocalizations.setLocale(code);
     if (mounted) setState(() {});
   }
@@ -109,6 +111,7 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
         orElse: () => list.first,
       );
       final savedLocale = await StorageService.loadLocale();
+      _localeCode = savedLocale;
       AppLocalizations.setLocale(savedLocale);
       if (mounted) {
         setState(() {
@@ -132,8 +135,9 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
     if (provider == null) return;
     final String title;
     if (_lastBalance != null) {
+      final sym = _lastBalance!.currencySymbol;
       title =
-          '${provider.name} \$${_lastBalance!.remaining.toStringAsFixed(2)}';
+          '${provider.name} $sym${_lastBalance!.remaining.toStringAsFixed(2)}';
     } else {
       title = provider.name;
     }
@@ -165,8 +169,12 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
         await windowManager.setPosition(
           Offset(trayBounds.left - 110, trayBounds.bottom + 4),
         );
+      } else {
+        await windowManager.center();
       }
-    } catch (_) {}
+    } catch (_) {
+      await windowManager.center();
+    }
     await windowManager.show();
     await windowManager.focus();
   }
@@ -218,11 +226,46 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
   @override
   Widget build(BuildContext context) {
     if (_activeProvider == null || _providers.isEmpty) {
-      return const SizedBox.shrink();
+      return MaterialApp(
+        key: const ValueKey('empty'),
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          fontFamily: Platform.isMacOS ? 'SF Pro Text' : 'Segoe UI',
+          scaffoldBackgroundColor: Colors.white,
+        ),
+        home: Scaffold(
+          backgroundColor: Colors.white,
+          body: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.dns_outlined, size: 48,
+                    color: Colors.black.withValues(alpha: 0.2)),
+                const SizedBox(height: 16),
+                Text(
+                  'No providers configured',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.black.withValues(alpha: 0.45),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Add one in Settings to get started',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.black.withValues(alpha: 0.25),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
     }
 
     return MaterialApp(
-      key: ValueKey('view_$_isFullView'),
+      key: ValueKey('view_$_isFullView$_localeCode'),
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.light,

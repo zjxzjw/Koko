@@ -137,7 +137,7 @@ class _DashboardViewState extends State<DashboardView> {
                       const SizedBox(width: 12),
                       _chartChip(
                         AppLocalizations.of('tokens'),
-                        '${_fmtTokens(data.daily.fold<int>(0, (s, d) => s + d.tokens))}',
+                        _fmtTokens(data.daily.fold<int>(0, (s, d) => s + d.tokens)),
                         const Color(0xFF10B981),
                       ),
                     ],
@@ -182,6 +182,7 @@ class _DashboardViewState extends State<DashboardView> {
 
   Widget _buildChart(BalanceResult data) {
     final now = DateTime.now();
+    final screenWidth = MediaQuery.of(context).size.width;
     final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
     final daily = data.daily.isNotEmpty
         ? data.daily
@@ -246,8 +247,9 @@ class _DashboardViewState extends State<DashboardView> {
               interval: (daily.length / 6).ceilToDouble().clamp(1, 999),
               getTitlesWidget: (v, meta) {
                 final idx = v.toInt();
-                if (idx < 0 || idx >= daily.length)
+                if (idx < 0 || idx >= daily.length) {
                   return const SizedBox.shrink();
+                }
                 return Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(
@@ -278,13 +280,13 @@ class _DashboardViewState extends State<DashboardView> {
             barRods: [
               BarChartRodData(
                 toY: daily[i].cost,
-                width: (520 - 64) / daily.length * 0.6,
+                width: (screenWidth - 64) / daily.length * 0.6,
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(3),
                 ),
                 color: daily[i].cost > 0
                     ? const Color(0xFF3B82F6)
-                    : Colors.black.withValues(alpha: 0.06),
+                    : Colors.black.withValues(alpha: 0.12),
               ),
             ],
           );
@@ -315,7 +317,7 @@ class _DashboardViewState extends State<DashboardView> {
       ),
       const SizedBox(width: 4),
       Text(
-        '$label $value',
+                    '$label $value',
         style: TextStyle(
           fontSize: 10,
           color: Colors.black.withValues(alpha: 0.45),
@@ -508,6 +510,27 @@ class _DashboardViewState extends State<DashboardView> {
                     style: TextStyle(
                       fontSize: 11,
                       color: Colors.black.withValues(alpha: 0.25),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton.icon(
+                    onPressed: _refreshData,
+                    icon: Icon(Icons.refresh_rounded, size: 14,
+                        color: Colors.black.withValues(alpha: 0.5)),
+                    label: Text(
+                      AppLocalizations.of('refresh'),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.black.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.black.withValues(alpha: 0.04),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   ),
                 ],

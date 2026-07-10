@@ -10,7 +10,7 @@ class ApiService {
       receiveTimeout: const Duration(seconds: 10),
       validateStatus: (_) => true,
     ),
-  )..interceptors.add(_LogInterceptor());
+  );
 
   static Future<BalanceResult> fetchBalance(ProviderConfig config) async {
     final base = config.baseUrl
@@ -52,8 +52,6 @@ class ApiService {
             ?.map((e) => e as Map<String, dynamic>)
             .toList() ??
         [];
-    final available = balData['is_available'] == true;
-
     double totalBalance = 0;
     double toppedUp = 0;
     String currency = 'USD';
@@ -66,14 +64,12 @@ class ApiService {
 
     // 2. Usage (daily breakdown for charts) — try known paths.
     final now = DateTime.now();
-    final pad = (int n) => n.toString().padLeft(2, '0');
-    final startDate = '${now.year}-${pad(now.month)}-01';
-    final endDate = '${now.year}-${pad(now.month)}-${pad(now.day)}';
+    final startDate = '${now.year}-${_pad(now.month)}-01';
+    final endDate = '${now.year}-${_pad(now.month)}-${_pad(now.day)}';
 
     double totalCost = 0;
-    int totalTokens = 0;
     final dayAgg = <String, _DayAgg>{};
-    final modelAgg = <String, _ModelAgg2>{};
+    final modelAgg = <String, _DayAgg>{};
     Map<String, dynamic>? uData;
 
     for (final path in [
@@ -138,9 +134,8 @@ class ApiService {
         modelAgg.update(model, (m) {
           m.cost += cost;
           return m;
-        }, ifAbsent: () => _ModelAgg2()..cost = cost);
+        }, ifAbsent: () => _DayAgg()..cost = cost);
         totalCost += cost;
-        totalTokens += prompt + completion;
       }
     }
 
@@ -212,9 +207,8 @@ class ApiService {
     Map<String, String> headers,
   ) async {
     final now = DateTime.now();
-    final pad = (int n) => n.toString().padLeft(2, '0');
-    final start = '${now.year}-${pad(now.month)}-01';
-    final end = '${now.year}-${pad(now.month)}-${pad(now.day)}';
+    final start = '${now.year}-${_pad(now.month)}-01';
+    final end = '${now.year}-${_pad(now.month)}-${_pad(now.day)}';
 
     try {
       final costUrl =
@@ -229,7 +223,7 @@ class ApiService {
       debugPrint('   ← ${e.response?.statusCode} — trying usage endpoint');
     }
 
-    final dateStr = '${now.year}-${pad(now.month)}-${pad(now.day)}';
+    final dateStr = '${now.year}-${_pad(now.month)}-${_pad(now.day)}';
     final usageUrl = '$base/v1/usage?date=$dateStr';
 
     final u = await _dio.get(usageUrl, options: Options(headers: headers));
@@ -253,7 +247,12 @@ class ApiService {
     try {
       return await _fetchOpenAI(base, headers);
     } catch (_) {
-      return _tryLegacyBilling(base, headers);
+      throw DioException(
+        requestOptions: RequestOptions(path: '$base/v1/...'),
+        message:
+            'No compatible billing API found.\n'
+            'Use https://api.deepseek.com or https://api.openai.com.',
+      );
     }
   }
 
@@ -369,17 +368,7 @@ class ApiService {
     return BalanceResult(remaining: 0, used: 0, details: details, daily: []);
   }
 
-  static Future<BalanceResult> _tryLegacyBilling(
-    String base,
-    Map<String, String> headers,
-  ) async {
-    throw DioException(
-      requestOptions: RequestOptions(path: '$base/v1/...'),
-      message:
-          'No compatible billing API found.\n'
-          'Use https://api.deepseek.com or https://api.openai.com.',
-    );
-  }
+  static String _pad(int n) => n.toString().padLeft(2, '0');
 
   static String _truncate(dynamic d, {int maxLen = 400}) {
     final s = d.toString();
@@ -406,14 +395,4 @@ class _DayAgg {
   int tokens = 0;
 }
 
-class _ModelAgg2 {
-  double cost = 0;
-}
 
-class _LogInterceptor extends Interceptor {
-  @override
-  void onResponse(Response r, ResponseInterceptorHandler h) => h.next(r);
-
-  @override
-  void onError(DioException e, ErrorInterceptorHandler h) => h.next(e);
-}
