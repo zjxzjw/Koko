@@ -1,175 +1,192 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../i18n/app_localizations.dart';
 import '../models/provider_model.dart';
-import '../services/storage_service.dart';
+import '../providers/providers.dart';
 import 'app_theme.dart';
-import 'balance_future_builder.dart';
 import 'settings_view.dart';
 
-class DashboardView extends StatefulWidget {
-  final ProviderConfig activeProvider;
-  final List<ProviderConfig> allProviders;
-  final Future<BalanceResult>? balanceFuture;
-  final VoidCallback onRefresh;
-  final VoidCallback onRefreshRequested;
-  final Color balanceColor;
-
-  const DashboardView({
-    super.key,
-    required this.activeProvider,
-    required this.allProviders,
-    required this.balanceFuture,
-    required this.onRefresh,
-    required this.onRefreshRequested,
-    required this.balanceColor,
-  });
+class DashboardView extends ConsumerStatefulWidget {
+  const DashboardView({super.key});
 
   @override
-  State<DashboardView> createState() => _DashboardViewState();
+  ConsumerState<DashboardView> createState() => _DashboardViewState();
 }
 
-class _DashboardViewState extends State<DashboardView> {
-  @override
-  void didUpdateWidget(covariant DashboardView oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.activeProvider.id != widget.activeProvider.id) {
-      widget.onRefresh();
-    }
-  }
-
-  Future<void> _switchProvider(String newId) async {
-    await StorageService.saveSelectedId(newId);
-    widget.onRefreshRequested();
-  }
-
+class _DashboardViewState extends ConsumerState<DashboardView> {
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final balanceAsync = ref.watch(balanceProvider);
+
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: BalanceFutureBuilder(
-        future: widget.balanceFuture,
-        builder: (context, data) => _buildContent(data, null),
-        errorBuilder: (context, error) => _buildContent(null, error),
+      backgroundColor: colors.background,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: _buildChildren(balanceAsync, colors),
       ),
     );
   }
 
-  Widget _buildContent(BalanceResult? data, Object? error) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 16),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: _buildHeader(data, error),
-        ),
-        const SizedBox(height: 16),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            AppLocalizations.of('remaining_balance'),
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.primaryText,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1.1,
-            ),
+  List<Widget> _buildChildren(
+    AsyncValue<BalanceResult?> balanceAsync,
+    AppColors colors,
+  ) {
+    final data = balanceAsync.asData?.value;
+
+    return [
+      const SizedBox(height: 16),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: _buildHeader(colors),
+      ),
+      const SizedBox(height: 16),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Text(
+          AppLocalizations.of('remaining_balance'),
+          style: TextStyle(
+            fontSize: 12,
+            color: colors.primaryText,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 1.1,
           ),
         ),
-        const SizedBox(height: 2),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            data != null
-                ? '${data.currencySymbol} ${data.remaining.toStringAsFixed(2)}'
-                : '--.--',
+      ),
+      const SizedBox(height: 2),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: balanceAsync.when(
+          data: (d) {
+            final remaining = d?.remaining;
+            final symbol = d?.currencySymbol ?? '\$';
+            return Text(
+              remaining != null
+                  ? '$symbol ${remaining.toStringAsFixed(2)}'
+                  : '--.--',
+              style: TextStyle(
+                fontSize: 34,
+                fontWeight: FontWeight.w300,
+                color: _calcBalanceColor(d, colors),
+                letterSpacing: -0.5,
+              ),
+            );
+          },
+          loading: () => _buildShimmerText(colors, 34),
+          error: (_, _) => Text(
+            '--.--',
             style: TextStyle(
               fontSize: 34,
               fontWeight: FontWeight.w300,
-              color: widget.balanceColor,
+              color: colors.primaryText,
               letterSpacing: -0.5,
             ),
           ),
         ),
-        if (data != null) ...[
-          const SizedBox(height: 2),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              AppLocalizations.of('used_total', {
-                'symbol': data.currencySymbol,
-                'used': data.used.toStringAsFixed(2),
-                'total': data.total.toStringAsFixed(2),
-              }),
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.text(0.35),
-              ),
-            ),
-          ),
-        ],
-        if (data != null) ...[
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                _chartLabel(AppLocalizations.of('daily_cost')),
-                const Spacer(),
-                _chartChip(
-                  AppLocalizations.of('cost'),
-                  '${data.currencySymbol} ${data.used.toStringAsFixed(2)}',
-                  const Color(0xFF3B82F6),
-                ),
-                const SizedBox(width: 12),
-                _chartChip(
-                  AppLocalizations.of('tokens'),
-                  _fmtTokens(
-                    data.daily.fold<int>(0, (s, d) => s + d.tokens),
-                  ),
-                  const Color(0xFF10B981),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 140,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _buildChart(data),
-            ),
-          ),
-        ],
-        const SizedBox(height: 16),
+      ),
+      if (data != null) ...[
+        const SizedBox(height: 2),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            AppLocalizations.of('model_breakdown'),
+            AppLocalizations.of('used_total', {
+              'symbol': data.currencySymbol,
+              'used': data.used.toStringAsFixed(2),
+              'total': data.total.toStringAsFixed(2),
+            }),
             style: TextStyle(
-              fontSize: 14,
-              color: AppColors.primaryText,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1.1,
+              fontSize: 12,
+              color: colors.dimText,
             ),
           ),
         ),
+      ],
+      if (data != null) ...[
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              _chartLabel(AppLocalizations.of('daily_cost'), colors),
+              const Spacer(),
+              _chartChip(
+                AppLocalizations.of('cost'),
+                '${data.currencySymbol} ${data.used.toStringAsFixed(2)}',
+                const Color(0xFF3B82F6),
+                colors,
+              ),
+              const SizedBox(width: 12),
+              _chartChip(
+                AppLocalizations.of('tokens'),
+                _fmtTokens(
+                  data.daily.fold<int>(0, (s, d) => s + d.tokens),
+                ),
+                const Color(0xFF10B981),
+                colors,
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 8),
-        Expanded(
-          child: _buildUsageList(
-            data,
-            error,
-            data?.currencySymbol ?? '\$',
+        SizedBox(
+          height: 140,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _buildChart(data, colors),
           ),
         ),
       ],
+      const SizedBox(height: 16),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Text(
+          AppLocalizations.of('model_breakdown'),
+          style: TextStyle(
+            fontSize: 14,
+            color: colors.primaryText,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 1.1,
+          ),
+        ),
+      ),
+      const SizedBox(height: 8),
+      Expanded(
+        child: _buildUsageList(balanceAsync, colors),
+      ),
+    ];
+  }
+
+  Color _calcBalanceColor(BalanceResult? balance, AppColors colors) {
+    if (balance == null) return colors.primaryText;
+    final provider = ref.read(activeProviderProvider);
+    if (balance.remaining < 0) return Colors.red.shade700;
+    if (provider?.minBalance != null &&
+        balance.remaining < provider!.minBalance!) {
+      return Colors.amber.shade700;
+    }
+    return colors.primaryText;
+  }
+
+  Widget _buildShimmerText(AppColors colors, double fontSize) {
+    return Shimmer.fromColors(
+      baseColor: colors.cardBg,
+      highlightColor: colors.hoverBg,
+      child: Container(
+        width: 150,
+        height: fontSize * 1.2,
+        decoration: BoxDecoration(
+          color: colors.cardBg,
+          borderRadius: BorderRadius.circular(4),
+        ),
+      ),
     );
   }
 
-  Widget _buildChart(BalanceResult data) {
+  Widget _buildChart(BalanceResult data, AppColors colors) {
     final now = DateTime.now();
     final screenWidth = MediaQuery.of(context).size.width;
     final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
@@ -224,7 +241,7 @@ class _DashboardViewState extends State<DashboardView> {
                 v == 0 ? '' : '${data.currencySymbol} ${v.toStringAsFixed(0)}',
                 style: TextStyle(
                   fontSize: 8,
-                  color: AppColors.text(0.3),
+                  color: colors.dimText,
                 ),
               ),
             ),
@@ -245,7 +262,7 @@ class _DashboardViewState extends State<DashboardView> {
                     '${daily[idx].date.day}',
                     style: TextStyle(
                       fontSize: 8,
-                      color: AppColors.text(0.3),
+                      color: colors.dimText,
                     ),
                   ),
                 );
@@ -258,7 +275,7 @@ class _DashboardViewState extends State<DashboardView> {
           drawVerticalLine: false,
           horizontalInterval: (maxCost / 4).clamp(0.01, double.infinity),
           getDrawingHorizontalLine: (_) => FlLine(
-            color: AppColors.text(0.05),
+            color: colors.cardBg,
             strokeWidth: 1,
           ),
         ),
@@ -275,7 +292,7 @@ class _DashboardViewState extends State<DashboardView> {
                 ),
                 color: daily[i].cost > 0
                     ? AppColors.chartBlue
-                    : AppColors.border(0.12),
+                    : colors.cardBg,
               ),
             ],
           );
@@ -284,36 +301,39 @@ class _DashboardViewState extends State<DashboardView> {
     );
   }
 
-  Widget _chartLabel(String text) => Text(
+  Widget _chartLabel(String text, AppColors colors) => Text(
     text,
     style: TextStyle(
       fontSize: 12,
       fontWeight: FontWeight.w600,
-      color: AppColors.primaryText,
+      color: colors.primaryText,
     ),
   );
 
-  Widget _chartChip(String label, String value, Color color) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Container(
-        width: 8,
-        height: 8,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(2),
-        ),
-      ),
-      const SizedBox(width: 4),
-      Text(
-        '$label $value',
-        style: TextStyle(
-          fontSize: 10,
-          color: AppColors.mutedText,
-        ),
-      ),
-    ],
-  );
+  Widget _chartChip(
+    String label, String value, Color color, AppColors colors,
+  ) =>
+      Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '$label $value',
+            style: TextStyle(
+              fontSize: 10,
+              color: colors.mutedText,
+            ),
+          ),
+        ],
+      );
 
   String _fmtTokens(int n) {
     if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
@@ -321,77 +341,81 @@ class _DashboardViewState extends State<DashboardView> {
     return n.toString();
   }
 
-  Widget _buildHeader(BalanceResult? data, Object? error) {
+  Widget _buildHeader(AppColors colors) {
+    final activeProvider = ref.watch(activeProviderProvider);
+    final allProviders = ref.watch(providersProvider).asData?.value ?? [];
+    final data = ref.watch(balanceProvider).asData?.value;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Container(
           constraints: const BoxConstraints(maxWidth: 220),
           decoration: BoxDecoration(
-            color: AppColors.hoverBg,
+            color: colors.hoverBg,
             borderRadius: BorderRadius.circular(8),
           ),
           child: MenuAnchor(
             alignmentOffset: const Offset(0, 4),
             style: MenuStyle(
               shape: WidgetStateProperty.all(
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               padding: WidgetStateProperty.all(EdgeInsets.zero),
-              backgroundColor: WidgetStateProperty.all(AppColors.menuBg),
+              backgroundColor: WidgetStateProperty.all(colors.menuBg),
               elevation: WidgetStateProperty.all(4),
             ),
-            builder:
-                (
-                  BuildContext context,
-                  MenuController controller,
-                  Widget? child,
-                ) {
-                  return InkWell(
-                    onTap: () {
-                      if (controller.isOpen) {
-                        controller.close();
-                      } else {
-                        controller.open();
-                      }
-                    },
-                    borderRadius: BorderRadius.circular(8),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              widget.activeProvider.name,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: AppColors.primaryText,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Icon(
-                            Icons.keyboard_arrow_down,
-                            size: 18,
-                            color: AppColors.accentText,
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
+            builder: (context, controller, child) {
+              return InkWell(
+                onTap: () {
+                  if (controller.isOpen) {
+                    controller.close();
+                  } else {
+                    controller.open();
+                  }
                 },
-            menuChildren: widget.allProviders
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          activeProvider?.name ??
+                              AppLocalizations.of('no_providers'),
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: colors.primaryText,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.keyboard_arrow_down,
+                        size: 18,
+                        color: colors.accentText,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+            menuChildren: allProviders
                 .map(
                   (p) => MenuItemButton(
                     onPressed: () {
-                      if (p.id != widget.activeProvider.id) {
-                        _switchProvider(p.id);
+                      if (p.id != activeProvider?.id) {
+                        ref
+                            .read(activeProviderIdProvider.notifier)
+                            .setActiveId(p.id);
                       }
                     },
                     style: MenuItemButton.styleFrom(
@@ -406,7 +430,7 @@ class _DashboardViewState extends State<DashboardView> {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight: p.id == widget.activeProvider.id
+                        fontWeight: p.id == activeProvider?.id
                             ? FontWeight.w600
                             : FontWeight.w400,
                       ),
@@ -433,38 +457,49 @@ class _DashboardViewState extends State<DashboardView> {
               icon: Icon(
                 Icons.settings_outlined,
                 size: 16,
-                color: AppColors.text(0.35),
+                color: colors.dimText,
               ),
               onPressed: () async {
-                await Navigator.of(
-                  context,
-                ).push(MaterialPageRoute(builder: (_) => const SettingsView()));
-                widget.onRefreshRequested();
+                await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const SettingsView(),
+                  ),
+                );
               },
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              constraints: const BoxConstraints(
+                minWidth: 28,
+                minHeight: 28,
+              ),
               tooltip: AppLocalizations.of('settings'),
             ),
             IconButton(
               icon: Icon(
                 Icons.refresh_rounded,
                 size: 16,
-                color: AppColors.text(0.35),
+                color: colors.dimText,
               ),
-              onPressed: widget.onRefresh,
+              onPressed: () =>
+                  ref.read(balanceProvider.notifier).refresh(),
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              constraints: const BoxConstraints(
+                minWidth: 28,
+                minHeight: 28,
+              ),
               tooltip: AppLocalizations.of('refresh'),
             ),
             IconButton(
               icon: Icon(
                 Icons.close_rounded,
                 size: 16,
-                color: AppColors.faintText,
+                color: colors.faintText,
               ),
               onPressed: () => windowManager.hide(),
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              constraints: const BoxConstraints(
+                minWidth: 28,
+                minHeight: 28,
+              ),
               tooltip: AppLocalizations.of('hide'),
             ),
           ],
@@ -473,152 +508,217 @@ class _DashboardViewState extends State<DashboardView> {
     );
   }
 
-  Widget _buildUsageList(BalanceResult? data, Object? error, String symbol) {
-    if (data == null) {
-      return Center(
-        child: error != null
-            ? Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.cloud_off,
-                    size: 28,
-                    color: AppColors.faintText,
+  Widget _buildUsageList(
+    AsyncValue<BalanceResult?> balanceAsync,
+    AppColors colors,
+  ) {
+    return balanceAsync.when(
+      data: (data) {
+        if (data == null) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.cloud_off,
+                  size: 28,
+                  color: colors.faintText,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  AppLocalizations.of('api_unreachable'),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colors.mutedText,
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    AppLocalizations.of('api_unreachable'),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  AppLocalizations.of('check_network'),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: colors.faintText,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextButton.icon(
+                  onPressed: () =>
+                      ref.read(balanceProvider.notifier).refresh(),
+                  icon: Icon(
+                    Icons.refresh_rounded,
+                    size: 14,
+                    color: colors.secondaryText,
+                  ),
+                  label: Text(
+                    AppLocalizations.of('refresh'),
                     style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.mutedText,
+                      color: colors.secondaryText,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  style: TextButton.styleFrom(
+                    backgroundColor: colors.hoverBg,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        if (data.details.isEmpty) {
+          return Center(
+            child: Text(
+              AppLocalizations.of('no_data'),
+              style: TextStyle(
+                fontSize: 13,
+                color: colors.dimText,
+              ),
+            ),
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          physics: const BouncingScrollPhysics(),
+          itemCount: data.details.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 8),
+          itemBuilder: (context, idx) {
+            final item = data.details[idx];
+            return Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: colors.cardBg,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.modelName,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colors.primaryText,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        if (item.totalTokens > 0) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            AppLocalizations.of('tokens_in_out', {
+                              'in_tokens': (item.promptTokens / 1000)
+                                  .toStringAsFixed(0),
+                              'out_tokens': (item.completionTokens / 1000)
+                                  .toStringAsFixed(0),
+                            }),
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: colors.dimText,
+                            ),
+                          ),
+                        ] else if (item.promptTokens > 0 ||
+                            item.completionTokens > 0) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            '${(item.totalTokens / 1000).toStringAsFixed(0)}k tokens',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: colors.dimText,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                   Text(
-                    AppLocalizations.of('check_network'),
+                    '${data.currencySymbol}${item.cost.toStringAsFixed(3)}',
                     style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.faintText,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextButton.icon(
-                    onPressed: widget.onRefresh,
-                    icon: Icon(
-                      Icons.refresh_rounded,
-                      size: 14,
-                      color: AppColors.text(0.5),
-                    ),
-                    label: Text(
-                      AppLocalizations.of('refresh'),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.text(0.5),
-                      ),
-                    ),
-                    style: TextButton.styleFrom(
-                      backgroundColor: AppColors.hoverBg,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: colors.secondaryText,
                     ),
                   ),
                 ],
-              )
-            : SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppColors.primaryText,
-                ),
               ),
-      );
-    }
-
-    if (data.details.isEmpty) {
-      return Center(
-        child: Text(
-          AppLocalizations.of('no_data'),
-          style: TextStyle(
-            fontSize: 13,
-            color: AppColors.text(0.35),
-          ),
-        ),
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      physics: const BouncingScrollPhysics(),
-      itemCount: data.details.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
-      itemBuilder: (context, idx) {
-        final item = data.details[idx];
-        return Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: AppColors.cardBg,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.modelName,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.text(0.8),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    if (item.totalTokens > 0) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        AppLocalizations.of('tokens_in_out', {
-                          'in_tokens': (item.promptTokens / 1000)
-                              .toStringAsFixed(0),
-                          'out_tokens': (item.completionTokens / 1000)
-                              .toStringAsFixed(0),
-                        }),
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: AppColors.text(0.35),
-                        ),
-                      ),
-                    ] else if (item.promptTokens > 0 || item.completionTokens > 0) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        '${(item.totalTokens / 1000).toStringAsFixed(0)}k tokens',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: AppColors.text(0.35),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              Text(
-                '$symbol${item.cost.toStringAsFixed(3)}',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.secondaryText,
-                ),
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
+      loading: () => Center(
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: colors.primaryText,
+          ),
+        ),
+      ),
+          error: (_, _) => Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.cloud_off,
+              size: 28,
+              color: colors.faintText,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              AppLocalizations.of('api_unreachable'),
+              style: TextStyle(
+                fontSize: 12,
+                color: colors.mutedText,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              AppLocalizations.of('check_network'),
+              style: TextStyle(
+                fontSize: 11,
+                color: colors.faintText,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: () =>
+                  ref.read(balanceProvider.notifier).refresh(),
+              icon: Icon(
+                Icons.refresh_rounded,
+                size: 14,
+                color: colors.secondaryText,
+              ),
+              label: Text(
+                AppLocalizations.of('refresh'),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: colors.secondaryText,
+                ),
+              ),
+              style: TextButton.styleFrom(
+                backgroundColor: colors.hoverBg,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

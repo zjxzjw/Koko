@@ -1,32 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../i18n/app_localizations.dart';
 import '../models/provider_model.dart';
-import '../services/storage_service.dart';
+import '../providers/providers.dart';
+import '../providers/settings_provider.dart';
 import 'app_theme.dart';
 
-class SettingsView extends StatefulWidget {
+class SettingsView extends ConsumerStatefulWidget {
   const SettingsView({super.key});
 
   @override
-  State<SettingsView> createState() => _SettingsViewState();
+  ConsumerState<SettingsView> createState() => _SettingsViewState();
 }
 
-class _SettingsViewState extends State<SettingsView> {
-  List<ProviderConfig> _providers = [];
-  bool _loading = true;
-  String _localeCode = 'en';
-  String _themeMode = 'system';
-
+class _SettingsViewState extends ConsumerState<SettingsView> {
   final _nameController = TextEditingController();
   final _urlController = TextEditingController();
   final _keyController = TextEditingController();
   final _minBalanceController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _loadData();
-  }
 
   @override
   void dispose() {
@@ -37,48 +29,27 @@ class _SettingsViewState extends State<SettingsView> {
     super.dispose();
   }
 
-  Future<void> _loadData() async {
-    final list = await StorageService.loadProviders();
-    final locale = await StorageService.loadLocale();
-    final theme = await StorageService.loadThemeMode();
-    setState(() {
-      _providers = list;
-      _localeCode = locale;
-      _themeMode = theme;
-      _loading = false;
-    });
-  }
-
-  Future<void> _changeLocale(String code) async {
-    AppLocalizations.setLocale(code);
-    await StorageService.saveLocale(code);
-    setState(() => _localeCode = code);
-  }
-
-  Future<void> _changeTheme(String mode) async {
-    await StorageService.saveThemeMode(mode);
-    setState(() => _themeMode = mode);
-  }
-
   Future<void> _deleteProvider(ProviderConfig p) async {
+    final colors = AppColors.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.dialogBg,
+        backgroundColor: colors.dialogBg,
         shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(12))),
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+        ),
         title: Text(
           AppLocalizations.of('remove_provider'),
           style: TextStyle(
             fontSize: 14,
-            color: AppColors.primaryText,
+            color: colors.primaryText,
           ),
         ),
         content: Text(
           AppLocalizations.of('delete_confirm', {'name': p.name}),
           style: TextStyle(
             fontSize: 12,
-            color: AppColors.text(0.4),
+            color: colors.secondaryText,
           ),
         ),
         actions: [
@@ -86,14 +57,14 @@ class _SettingsViewState extends State<SettingsView> {
             onPressed: () => Navigator.pop(ctx, false),
             child: Text(
               AppLocalizations.of('cancel'),
-              style: TextStyle(color: AppColors.secondaryText),
+              style: TextStyle(color: colors.secondaryText),
             ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text(
-              AppLocalizations.of('delete'),
-              style: const TextStyle(color: Colors.redAccent),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: Colors.redAccent),
             ),
           ),
         ],
@@ -101,18 +72,18 @@ class _SettingsViewState extends State<SettingsView> {
     );
 
     if (confirmed == true) {
-      _providers.removeWhere((item) => item.id == p.id);
-      await StorageService.saveProviders(_providers);
-      setState(() {});
+      await ref.read(providersProvider.notifier).deleteProvider(p.id);
     }
   }
 
   void _showEditor({ProviderConfig? existing}) {
+    final colors = AppColors.of(context);
     if (existing != null) {
       _nameController.text = existing.name;
       _urlController.text = existing.baseUrl;
       _keyController.text = existing.apiKey;
-      _minBalanceController.text = existing.minBalance?.toStringAsFixed(2) ?? '';
+      _minBalanceController.text =
+          existing.minBalance?.toStringAsFixed(2) ?? '';
     } else {
       _nameController.clear();
       _urlController.clear();
@@ -126,36 +97,46 @@ class _SettingsViewState extends State<SettingsView> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: AppColors.dialogBg,
+          backgroundColor: colors.dialogBg,
           shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(12))),
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+          ),
           title: Text(
             existing == null
                 ? AppLocalizations.of('add_provider')
                 : AppLocalizations.of('edit_provider'),
             style: TextStyle(
               fontSize: 14,
-              color: AppColors.primaryText,
+              color: colors.primaryText,
             ),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               _buildField(
-                  AppLocalizations.of('name'), _nameController,
-                  hint: AppLocalizations.of('hint_name')),
+                AppLocalizations.of('name'),
+                _nameController,
+                hint: AppLocalizations.of('hint_name'),
+              ),
               const SizedBox(height: 12),
               _buildField(
-                  AppLocalizations.of('base_url'), _urlController,
-                  hint: AppLocalizations.of('hint_url')),
+                AppLocalizations.of('base_url'),
+                _urlController,
+                hint: AppLocalizations.of('hint_url'),
+              ),
               const SizedBox(height: 12),
               _buildField(
-                  AppLocalizations.of('api_key'), _keyController,
-                  hint: AppLocalizations.of('hint_key'), obscure: true),
+                AppLocalizations.of('api_key'),
+                _keyController,
+                hint: AppLocalizations.of('hint_key'),
+                obscure: true,
+              ),
               const SizedBox(height: 12),
               _buildField(
-                  AppLocalizations.of('min_balance'), _minBalanceController,
-                  hint: AppLocalizations.of('hint_min_balance')),
+                AppLocalizations.of('min_balance'),
+                _minBalanceController,
+                hint: AppLocalizations.of('hint_min_balance'),
+              ),
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -163,7 +144,7 @@ class _SettingsViewState extends State<SettingsView> {
                     AppLocalizations.of('auto_refresh'),
                     style: TextStyle(
                       fontSize: 11,
-                      color: AppColors.mutedText,
+                      color: colors.mutedText,
                     ),
                   ),
                   const Spacer(),
@@ -176,7 +157,8 @@ class _SettingsViewState extends State<SettingsView> {
                         ),
                       ),
                       padding: WidgetStateProperty.all(EdgeInsets.zero),
-                      backgroundColor: WidgetStateProperty.all(AppColors.menuBg),
+                      backgroundColor:
+                          WidgetStateProperty.all(colors.menuBg),
                       elevation: WidgetStateProperty.all(4),
                     ),
                     builder: (context, controller, child) {
@@ -201,7 +183,7 @@ class _SettingsViewState extends State<SettingsView> {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.hoverBg,
+                            color: colors.hoverBg,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(
@@ -211,14 +193,14 @@ class _SettingsViewState extends State<SettingsView> {
                                 label,
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: AppColors.primaryText,
+                                  color: colors.primaryText,
                                 ),
                               ),
                               const SizedBox(width: 4),
                               Icon(
                                 Icons.keyboard_arrow_down,
                                 size: 18,
-                                color: AppColors.accentText,
+                                color: colors.accentText,
                               ),
                             ],
                           ),
@@ -227,7 +209,8 @@ class _SettingsViewState extends State<SettingsView> {
                     },
                     menuChildren: [
                       MenuItemButton(
-                        onPressed: () => setDialogState(() => refreshInterval = 0),
+                        onPressed: () =>
+                            setDialogState(() => refreshInterval = 0),
                         style: MenuItemButton.styleFrom(
                           minimumSize: const Size(100, 32),
                           padding: const EdgeInsets.symmetric(
@@ -246,7 +229,8 @@ class _SettingsViewState extends State<SettingsView> {
                         ),
                       ),
                       MenuItemButton(
-                        onPressed: () => setDialogState(() => refreshInterval = 10),
+                        onPressed: () =>
+                            setDialogState(() => refreshInterval = 10),
                         style: MenuItemButton.styleFrom(
                           minimumSize: const Size(100, 32),
                           padding: const EdgeInsets.symmetric(
@@ -265,7 +249,8 @@ class _SettingsViewState extends State<SettingsView> {
                         ),
                       ),
                       MenuItemButton(
-                        onPressed: () => setDialogState(() => refreshInterval = 30),
+                        onPressed: () =>
+                            setDialogState(() => refreshInterval = 30),
                         style: MenuItemButton.styleFrom(
                           minimumSize: const Size(100, 32),
                           padding: const EdgeInsets.symmetric(
@@ -284,7 +269,8 @@ class _SettingsViewState extends State<SettingsView> {
                         ),
                       ),
                       MenuItemButton(
-                        onPressed: () => setDialogState(() => refreshInterval = 60),
+                        onPressed: () =>
+                            setDialogState(() => refreshInterval = 60),
                         style: MenuItemButton.styleFrom(
                           minimumSize: const Size(100, 32),
                           padding: const EdgeInsets.symmetric(
@@ -313,7 +299,7 @@ class _SettingsViewState extends State<SettingsView> {
               onPressed: () => Navigator.pop(ctx),
               child: Text(
                 AppLocalizations.of('cancel'),
-                style: TextStyle(color: AppColors.secondaryText),
+                style: TextStyle(color: colors.secondaryText),
               ),
             ),
             TextButton(
@@ -323,7 +309,11 @@ class _SettingsViewState extends State<SettingsView> {
                 final key = _keyController.text.trim();
 
                 if (name.isEmpty) return;
-                if (url.isEmpty || (!url.startsWith('http://') && !url.startsWith('https://'))) return;
+                if (url.isEmpty ||
+                    (!url.startsWith('http://') &&
+                        !url.startsWith('https://'))) {
+                  return;
+                }
                 if (key.isEmpty) return;
 
                 final minBalText = _minBalanceController.text.trim();
@@ -334,19 +324,17 @@ class _SettingsViewState extends State<SettingsView> {
                   minBalance = parsed;
                 }
 
+                final notifier = ref.read(providersProvider.notifier);
                 if (existing != null) {
-                  final index = _providers.indexWhere((p) => p.id == existing.id);
-                  if (index != -1) {
-                    _providers[index] = existing.copyWith(
-                      name: name,
-                      baseUrl: url,
-                      apiKey: key,
-                      refreshIntervalMinutes: refreshInterval,
-                      minBalance: minBalance,
-                    );
-                  }
+                  await notifier.updateProvider(existing.copyWith(
+                    name: name,
+                    baseUrl: url,
+                    apiKey: key,
+                    refreshIntervalMinutes: refreshInterval,
+                    minBalance: minBalance,
+                  ));
                 } else {
-                  _providers.add(
+                  await notifier.addProvider(
                     ProviderConfig(
                       id: ProviderConfig.generateId(),
                       name: name,
@@ -357,14 +345,11 @@ class _SettingsViewState extends State<SettingsView> {
                     ),
                   );
                 }
-                final nav = Navigator.of(ctx);
-                await StorageService.saveProviders(_providers);
-                nav.pop();
-                if (mounted) setState(() {});
+                if (ctx.mounted) Navigator.pop(ctx);
               },
               child: Text(
                 AppLocalizations.of('save'),
-                style: TextStyle(color: AppColors.primaryText),
+                style: TextStyle(color: colors.primaryText),
               ),
             ),
           ],
@@ -379,28 +364,29 @@ class _SettingsViewState extends State<SettingsView> {
     String? hint,
     bool obscure = false,
   }) {
-    final borderColor = AppColors.border(0.12);
+    final colors = AppColors.of(context);
+    final borderColor = colors.dimText.withValues(alpha: 0.3);
     return TextField(
       controller: controller,
       obscureText: obscure,
-      cursorColor: AppColors.primaryText,
+      cursorColor: colors.primaryText,
       style: TextStyle(
         fontSize: 13,
-        color: AppColors.primaryText,
+        color: colors.primaryText,
       ),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         labelStyle: TextStyle(
           fontSize: 11,
-          color: AppColors.text(0.4),
+          color: colors.secondaryText,
         ),
         hintStyle: TextStyle(
           fontSize: 12,
-          color: AppColors.faintText,
+          color: colors.faintText,
         ),
         filled: true,
-        fillColor: AppColors.overlay(0.02),
+        fillColor: colors.cardBg,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(8)),
           borderSide: BorderSide(color: borderColor),
@@ -411,7 +397,7 @@ class _SettingsViewState extends State<SettingsView> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(8)),
-          borderSide: BorderSide(color: AppColors.border(0.35)),
+          borderSide: BorderSide(color: colors.dimText),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 12,
@@ -423,139 +409,157 @@ class _SettingsViewState extends State<SettingsView> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final providersAsync = ref.watch(providersProvider);
+    final localeCode =
+        ref.watch(localeSettingProvider).asData?.value ?? 'en';
+    final themeMode =
+        ref.watch(themeModeSettingProvider).asData?.value ?? 'system';
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       appBar: AppBar(
         title: Text(
           AppLocalizations.of('settings'),
           style: TextStyle(
             fontSize: 14,
-            color: AppColors.primaryText,
+            color: colors.primaryText,
           ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
         actionsPadding: const EdgeInsets.only(right: 16),
-        iconTheme: IconThemeData(color: AppColors.text(0.6)),
+        iconTheme: IconThemeData(color: colors.secondaryText),
         actions: [
           IconButton(
-            icon: Icon(Icons.add, size: 24, color: AppColors.text(0.45)),
+            icon: Icon(Icons.add, size: 24, color: colors.secondaryText),
             onPressed: () => _showEditor(),
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+            constraints: const BoxConstraints(
+              minWidth: 28,
+              minHeight: 28,
+            ),
           ),
         ],
       ),
-      body: _loading
-          ? Center(
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppColors.primaryText,
-                ),
-              ),
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildSectionHeader(AppLocalizations.of('general_settings')),
-                _buildLanguageSelector(),
-                _buildThemeSelector(),
-                const SizedBox(height: 8),
-                _buildSectionHeader(AppLocalizations.of('model_settings')),
-                Expanded(
-                  child: _providers.isEmpty
-                      ? Center(
-                          child: Column(
+      body: providersAsync.when(
+        data: (providers) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader(
+              AppLocalizations.of('general_settings'),
+              colors,
+            ),
+            _buildLanguageSelector(localeCode, colors),
+            _buildThemeSelector(themeMode, colors),
+            const SizedBox(height: 8),
+            _buildSectionHeader(
+              AppLocalizations.of('model_settings'),
+              colors,
+            ),
+            Expanded(
+              child: providers.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.dns_outlined,
+                            size: 36,
+                            color: colors.subtleText,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            AppLocalizations.of('no_providers'),
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: colors.mutedText,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: () => _showEditor(),
+                            icon: const Icon(Icons.add, size: 16),
+                            label: Text(
+                              AppLocalizations.of('add_first'),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: colors.overlayBg,
+                              foregroundColor: colors.primaryText,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: providers.length,
+                      itemBuilder: (context, idx) {
+                        final p = providers[idx];
+                        return ListTile(
+                          title: Text(
+                            p.name,
+                            style: TextStyle(
+                              color: colors.primaryText,
+                              fontSize: 13,
+                            ),
+                          ),
+                          subtitle: Text(
+                            p.baseUrl,
+                            style: TextStyle(
+                              color: colors.secondaryText,
+                              fontSize: 11,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(
-                                Icons.dns_outlined,
-                                size: 36,
-                                color: AppColors.subtleText,
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                AppLocalizations.of('no_providers'),
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.mutedText,
+                              IconButton(
+                                icon: Icon(
+                                  Icons.edit_outlined,
+                                  size: 16,
+                                  color: colors.secondaryText,
                                 ),
+                                onPressed: () =>
+                                    _showEditor(existing: p),
                               ),
-                              const SizedBox(height: 16),
-                              ElevatedButton.icon(
-                                onPressed: () => _showEditor(),
-                                icon: const Icon(Icons.add, size: 16),
-                                label: Text(
-                                    AppLocalizations.of('add_first')),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.overlayBg,
-                                  foregroundColor: AppColors.text(0.75),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  size: 16,
+                                  color: Colors.redAccent,
                                 ),
+                                onPressed: () => _deleteProvider(p),
                               ),
                             ],
                           ),
-                        )
-                      : ListView.builder(
-                          itemCount: _providers.length,
-                          itemBuilder: (context, idx) {
-                            final p = _providers[idx];
-                            return ListTile(
-                              title: Text(
-                                p.name,
-                                style: TextStyle(
-                                  color: AppColors.primaryText,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              subtitle: Text(
-                                p.baseUrl,
-                                style: TextStyle(
-                                  color: AppColors.text(0.4),
-                                  fontSize: 11,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: Icon(
-                                      Icons.edit_outlined,
-                                      size: 16,
-                                      color: AppColors.text(0.4),
-                                    ),
-                                    onPressed: () => _showEditor(existing: p),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.delete_outline,
-                                      size: 16,
-                                      color: Colors.redAccent,
-                                    ),
-                                    onPressed: () => _deleteProvider(p),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                ),
-              ],
+                        );
+                      },
+                    ),
             ),
+          ],
+        ),
+        loading: () => const Center(
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+        error: (err, _) => Center(
+          child: Text(
+            'Error: $err',
+            style: TextStyle(color: colors.mutedText),
+          ),
+        ),
+      ),
     );
   }
 
-  Widget _buildThemeSelector() {
-    final label = switch (_themeMode) {
+  Widget _buildThemeSelector(String themeMode, AppColors colors) {
+    final label = switch (themeMode) {
       'light' => AppLocalizations.of('light'),
       'dark' => AppLocalizations.of('dark'),
       _ => AppLocalizations.of('follow_system'),
     };
-    final icon = switch (_themeMode) {
+    final icon = switch (themeMode) {
       'light' => Icons.light_mode,
       'dark' => Icons.dark_mode,
       _ => Icons.brightness_auto,
@@ -564,13 +568,13 @@ class _SettingsViewState extends State<SettingsView> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: AppColors.mutedText),
+          Icon(icon, size: 16, color: colors.mutedText),
           const SizedBox(width: 8),
           Text(
             AppLocalizations.of('theme_mode'),
             style: TextStyle(
               fontSize: 13,
-              color: AppColors.text(0.7),
+              color: colors.primaryText,
             ),
           ),
           const Spacer(),
@@ -583,11 +587,13 @@ class _SettingsViewState extends State<SettingsView> {
                 ),
               ),
               padding: WidgetStateProperty.all(EdgeInsets.zero),
-              backgroundColor: WidgetStateProperty.all(AppColors.menuBg),
+              backgroundColor:
+                  WidgetStateProperty.all(colors.menuBg),
               elevation: WidgetStateProperty.all(4),
             ),
-            builder: (BuildContext context, MenuController controller,
-                Widget? child) {
+            builder:
+                (BuildContext context, MenuController controller,
+                    Widget? child) {
               return InkWell(
                 onTap: () {
                   if (controller.isOpen) {
@@ -603,7 +609,7 @@ class _SettingsViewState extends State<SettingsView> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.hoverBg,
+                    color: colors.hoverBg,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
@@ -613,14 +619,14 @@ class _SettingsViewState extends State<SettingsView> {
                         label,
                         style: TextStyle(
                           fontSize: 13,
-                          color: AppColors.primaryText,
+                          color: colors.primaryText,
                         ),
                       ),
                       const SizedBox(width: 4),
                       Icon(
                         Icons.keyboard_arrow_down,
                         size: 18,
-                        color: AppColors.accentText,
+                        color: colors.accentText,
                       ),
                     ],
                   ),
@@ -629,7 +635,9 @@ class _SettingsViewState extends State<SettingsView> {
             },
             menuChildren: [
               MenuItemButton(
-                onPressed: () => _changeTheme('system'),
+                onPressed: () => ref
+                    .read(themeModeSettingProvider.notifier)
+                    .setThemeMode('system'),
                 style: MenuItemButton.styleFrom(
                   minimumSize: const Size(120, 32),
                   padding: const EdgeInsets.symmetric(
@@ -641,14 +649,16 @@ class _SettingsViewState extends State<SettingsView> {
                   AppLocalizations.of('follow_system'),
                   style: TextStyle(
                     fontSize: 13,
-                    fontWeight: _themeMode == 'system'
+                    fontWeight: themeMode == 'system'
                         ? FontWeight.w600
                         : FontWeight.w400,
                   ),
                 ),
               ),
               MenuItemButton(
-                onPressed: () => _changeTheme('light'),
+                onPressed: () => ref
+                    .read(themeModeSettingProvider.notifier)
+                    .setThemeMode('light'),
                 style: MenuItemButton.styleFrom(
                   minimumSize: const Size(120, 32),
                   padding: const EdgeInsets.symmetric(
@@ -660,14 +670,16 @@ class _SettingsViewState extends State<SettingsView> {
                   AppLocalizations.of('light'),
                   style: TextStyle(
                     fontSize: 13,
-                    fontWeight: _themeMode == 'light'
+                    fontWeight: themeMode == 'light'
                         ? FontWeight.w600
                         : FontWeight.w400,
                   ),
                 ),
               ),
               MenuItemButton(
-                onPressed: () => _changeTheme('dark'),
+                onPressed: () => ref
+                    .read(themeModeSettingProvider.notifier)
+                    .setThemeMode('dark'),
                 style: MenuItemButton.styleFrom(
                   minimumSize: const Size(120, 32),
                   padding: const EdgeInsets.symmetric(
@@ -679,7 +691,7 @@ class _SettingsViewState extends State<SettingsView> {
                   AppLocalizations.of('dark'),
                   style: TextStyle(
                     fontSize: 13,
-                    fontWeight: _themeMode == 'dark'
+                    fontWeight: themeMode == 'dark'
                         ? FontWeight.w600
                         : FontWeight.w400,
                   ),
@@ -692,19 +704,22 @@ class _SettingsViewState extends State<SettingsView> {
     );
   }
 
-  Widget _buildLanguageSelector() {
+  Widget _buildLanguageSelector(String localeCode, AppColors colors) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          Icon(Icons.language_outlined,
-              size: 16, color: AppColors.mutedText),
+          Icon(
+            Icons.language_outlined,
+            size: 16,
+            color: colors.mutedText,
+          ),
           const SizedBox(width: 8),
           Text(
             AppLocalizations.of('language'),
             style: TextStyle(
               fontSize: 13,
-              color: AppColors.text(0.7),
+              color: colors.primaryText,
             ),
           ),
           const Spacer(),
@@ -717,11 +732,13 @@ class _SettingsViewState extends State<SettingsView> {
                 ),
               ),
               padding: WidgetStateProperty.all(EdgeInsets.zero),
-              backgroundColor: WidgetStateProperty.all(AppColors.menuBg),
+              backgroundColor:
+                  WidgetStateProperty.all(colors.menuBg),
               elevation: WidgetStateProperty.all(4),
             ),
-            builder: (BuildContext context, MenuController controller,
-                Widget? child) {
+            builder:
+                (BuildContext context, MenuController controller,
+                    Widget? child) {
               return InkWell(
                 onTap: () {
                   if (controller.isOpen) {
@@ -737,24 +754,24 @@ class _SettingsViewState extends State<SettingsView> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.hoverBg,
+                    color: colors.hoverBg,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        _localeCode == 'en' ? 'English' : '中文',
+                        localeCode == 'en' ? 'English' : '中文',
                         style: TextStyle(
                           fontSize: 13,
-                          color: AppColors.primaryText,
+                          color: colors.primaryText,
                         ),
                       ),
                       const SizedBox(width: 4),
                       Icon(
                         Icons.keyboard_arrow_down,
                         size: 18,
-                        color: AppColors.accentText,
+                        color: colors.accentText,
                       ),
                     ],
                   ),
@@ -763,7 +780,9 @@ class _SettingsViewState extends State<SettingsView> {
             },
             menuChildren: [
               MenuItemButton(
-                onPressed: () => _changeLocale('en'),
+                onPressed: () => ref
+                    .read(localeSettingProvider.notifier)
+                    .setLocale('en'),
                 style: MenuItemButton.styleFrom(
                   minimumSize: const Size(100, 32),
                   padding: const EdgeInsets.symmetric(
@@ -775,14 +794,16 @@ class _SettingsViewState extends State<SettingsView> {
                   'English',
                   style: TextStyle(
                     fontSize: 13,
-                    fontWeight: _localeCode == 'en'
+                    fontWeight: localeCode == 'en'
                         ? FontWeight.w600
                         : FontWeight.w400,
                   ),
                 ),
               ),
               MenuItemButton(
-                onPressed: () => _changeLocale('zh'),
+                onPressed: () => ref
+                    .read(localeSettingProvider.notifier)
+                    .setLocale('zh'),
                 style: MenuItemButton.styleFrom(
                   minimumSize: const Size(100, 32),
                   padding: const EdgeInsets.symmetric(
@@ -794,7 +815,7 @@ class _SettingsViewState extends State<SettingsView> {
                   '中文',
                   style: TextStyle(
                     fontSize: 13,
-                    fontWeight: _localeCode == 'zh'
+                    fontWeight: localeCode == 'zh'
                         ? FontWeight.w600
                         : FontWeight.w400,
                   ),
@@ -807,14 +828,14 @@ class _SettingsViewState extends State<SettingsView> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(String title, AppColors colors) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Text(
         title,
         style: TextStyle(
           fontSize: 12,
-          color: AppColors.primaryText,
+          color: colors.primaryText,
           fontWeight: FontWeight.w600,
           letterSpacing: 1.1,
         ),

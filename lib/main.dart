@@ -1,14 +1,16 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'i18n/app_localizations.dart';
 import 'models/provider_model.dart';
-import 'services/api_service.dart';
+import 'providers/providers.dart';
+import 'providers/settings_provider.dart';
 import 'services/storage_service.dart';
 import 'ui/app_theme.dart';
 import 'ui/dashboard_view.dart';
@@ -32,7 +34,7 @@ void main() async {
 
   const windowOptions = WindowOptions(
     size: _kFullSize,
-    center: true,
+    center: false,
     backgroundColor: Colors.white,
     skipTaskbar: true,
     titleBarStyle: TitleBarStyle.hidden,
@@ -42,50 +44,61 @@ void main() async {
   windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.setAsFrameless();
     await windowManager.setResizable(false);
+    await _restoreWindowPosition();
     await windowManager.show();
     await windowManager.focus();
   });
 
-  runApp(const BalanceMonitorApp());
+  runApp(const ProviderScope(child: BalanceMonitorApp()));
 }
 
-class BalanceMonitorApp extends StatefulWidget {
+Future<void> _restoreWindowPosition() async {
+  final x = await StorageService.loadWindowX();
+  final y = await StorageService.loadWindowY();
+  if (x != null && y != null) {
+    try {
+      await windowManager.setPosition(Offset(x, y));
+    } catch (_) {}
+  }
+}
+
+Future<void> _saveWindowPosition() async {
+  try {
+    final pos = await windowManager.getPosition();
+    final size = await windowManager.getSize();
+    await StorageService.saveWindowPosition(
+      pos.dx, pos.dy, size.width, size.height,
+    );
+  } catch (_) {}
+}
+
+class BalanceMonitorApp extends ConsumerStatefulWidget {
   const BalanceMonitorApp({super.key});
 
   @override
-  State<BalanceMonitorApp> createState() => _BalanceMonitorAppState();
+  ConsumerState<BalanceMonitorApp> createState() => _BalanceMonitorAppState();
 }
 
-class _BalanceMonitorAppState extends State<BalanceMonitorApp>
+class _BalanceMonitorAppState extends ConsumerState<BalanceMonitorApp>
     with TrayListener, WindowListener {
-  List<ProviderConfig> _providers = [];
-  ProviderConfig? _activeProvider;
-  BalanceResult? _lastBalance;
   bool _isFullView = true;
-  String _localeCode = 'en';
-  ThemeMode _themeMode = ThemeMode.system;
-  Future<BalanceResult>? _balanceFuture;
-  Timer? _refreshTimer;
-  bool _isFetching = false;
-  Color _balanceColor = AppColors.primaryText;
 
   @override
   void initState() {
     super.initState();
     trayManager.addListener(this);
     windowManager.addListener(this);
-    _initTrayAndData();
+    _initTray();
   }
 
   @override
   void dispose() {
-    _refreshTimer?.cancel();
     trayManager.removeListener(this);
     windowManager.removeListener(this);
     super.dispose();
   }
 
-  Future<void> _initTrayAndData() async {
+  Future<void> _initTray() async {
     final iconPath = Platform.isWindows
         ? 'assets/app_icon.ico'
         : 'assets/tray_icon.png';
@@ -94,119 +107,44 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
     } catch (e) {
       debugPrint('Tray setIcon error: $e');
     }
-    await _loadLocale();
-    await _loadTheme();
     try {
       await trayManager.setToolTip(AppLocalizations.of('balance_monitor'));
     } catch (e) {
       debugPrint('Tray setToolTip error: $e');
     }
-    await _loadProviders();
-    if (_activeProvider != null && _activeProvider!.apiKey.isNotEmpty) {
-      await _fetchBalance();
-    }
-    _scheduleTimer();
   }
 
-  Future<void> _loadLocale() async {
-    final code = await StorageService.loadLocale();
-    _localeCode = code;
-    AppLocalizations.setLocale(code);
-    if (mounted) setState(() {});
-  }
+  void _updateTrayTitle(BalanceResult? result) {
+    final provider = ref.read(activeProviderProvider);
+    if (provider == null) return;
 
-  Future<void> _loadTheme() async {
-    final mode = await StorageService.loadThemeMode();
-    _themeMode = _parseThemeMode(mode);
-    AppColors.setMode(_themeMode);
-    if (mounted) setState(() {});
-  }
-
-  static ThemeMode _parseThemeMode(String mode) {
-    switch (mode) {
-      case 'light':
-        return ThemeMode.light;
-      case 'dark':
-        return ThemeMode.dark;
-      default:
-        return ThemeMode.system;
-    }
-  }
-
-  Future<void> _loadProviders() async {
-    try {
-      final list = await StorageService.loadProviders();
-      final savedId = await StorageService.loadSelectedId();
-      ProviderConfig? active;
-      if (list.isNotEmpty) {
-        active = list.firstWhere(
-          (p) => p.id == savedId,
-          orElse: () => list.first,
+    if (result != null) {
+      final sym = result.currencySymbol;
+      try {
+        trayManager.setTitle(
+          '${provider.name} $sym ${result.remaining.toStringAsFixed(2)}',
         );
+      } catch (e) {
+        debugPrint('Tray title error: $e');
       }
-      if (mounted) {
-        setState(() {
-          _providers = list;
-          _activeProvider = active;
-        });
+      try {
+        trayManager.setToolTip(
+          AppLocalizations.of('balance_monitor_long', {
+            'name': provider.name,
+            'symbol': sym,
+            'remaining': result.remaining.toStringAsFixed(2),
+            'used': result.used.toStringAsFixed(2),
+          }),
+        );
+      } catch (e) {
+        debugPrint('Tray tooltip error: $e');
       }
-      _updateTrayTitle();
-    } catch (e) {
-      debugPrint('Load providers error: $e');
     }
-  }
-
-  Future<void> _fetchBalance() async {
-    if (_activeProvider == null || _isFetching) return;
-    _isFetching = true;
-    final future = ApiService.fetchBalance(_activeProvider!);
-    try {
-      if (mounted) {
-        setState(() {
-          _balanceFuture = future;
-        });
-      }
-      final result = await future;
-      _lastBalance = result;
-      await _onBalanceUpdated(result);
-    } catch (_) {
-      _lastBalance = null;
-      await _onBalanceUpdated(null);
-    } finally {
-      _isFetching = false;
-      if (mounted) setState(() {});
-    }
-  }
-
-  void _scheduleTimer() {
-    _refreshTimer?.cancel();
-    final interval = _activeProvider?.refreshIntervalMinutes ?? 0;
-    if (interval > 0) {
-      _refreshTimer = Timer.periodic(
-        Duration(minutes: interval),
-        (_) => _fetchBalance(),
-      );
-    }
-  }
-
-  Future<void> _onRefreshRequested() async {
-    await _loadLocale();
-    await _loadTheme();
-    await _loadProviders();
-    _scheduleTimer();
-    await _fetchBalance();
-  }
-
-  Future<void> _onBalanceUpdated(BalanceResult? result) async {
-    _balanceColor = _calcBalanceColor(result, _activeProvider);
-    _updateTrayTitle();
-    await _checkLowBalanceNotification(result);
-    if (mounted) setState(() {});
   }
 
   Future<void> _checkLowBalanceNotification(BalanceResult? result) async {
-    if (result == null || _activeProvider == null) return;
-    final provider = _activeProvider!;
+    final provider = ref.read(activeProviderProvider);
+    if (result == null || provider == null) return;
     if (provider.minBalance != null &&
         result.remaining < provider.minBalance!) {
       final lastTime = await StorageService.loadLastNotifyTime(provider.id);
@@ -214,71 +152,23 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
       const twelveHours = 12 * 60 * 60 * 1000;
       if (now - lastTime >= twelveHours) {
         await StorageService.saveLastNotifyTime(provider.id);
-        await _showNotification(
-          AppLocalizations.of('low_balance_title', {'name': provider.name}),
-          AppLocalizations.of('low_balance_body', {
-            'symbol': result.currencySymbol,
-            'remaining': result.remaining.toStringAsFixed(2),
-          }),
-        );
+        try {
+          const details = NotificationDetails(
+            macOS: DarwinNotificationDetails(),
+          );
+          await _notifications.show(
+            DateTime.now().millisecondsSinceEpoch ~/ 1000,
+            AppLocalizations.of('low_balance_title', {'name': provider.name}),
+            AppLocalizations.of('low_balance_body', {
+              'symbol': result.currencySymbol,
+              'remaining': result.remaining.toStringAsFixed(2),
+            }),
+            details,
+          );
+        } catch (e) {
+          debugPrint('Notification error: $e');
+        }
       }
-    }
-  }
-
-  Future<void> _showNotification(String title, String body) async {
-    try {
-      const details = NotificationDetails(
-        macOS: DarwinNotificationDetails(),
-      );
-      await _notifications.show(
-        DateTime.now().millisecondsSinceEpoch ~/ 1000,
-        title,
-        body,
-        details,
-      );
-    } catch (e) {
-      debugPrint('Notification error: $e');
-    }
-  }
-
-  Color _calcBalanceColor(BalanceResult? balance, ProviderConfig? provider) {
-    if (balance == null || provider == null) {
-      return AppColors.primaryText;
-    }
-    if (balance.remaining < 0) return Colors.red.shade700;
-    if (provider.minBalance != null &&
-        balance.remaining < provider.minBalance!) {
-      return Colors.amber.shade700;
-    }
-    return AppColors.primaryText;
-  }
-
-  void _updateTrayTitle() {
-    final provider = _activeProvider;
-    if (provider == null) return;
-    final String title;
-    if (_lastBalance != null) {
-      final sym = _lastBalance!.currencySymbol;
-      title =
-          '${provider.name} $sym ${_lastBalance!.remaining.toStringAsFixed(2)}';
-    } else {
-      title = provider.name;
-    }
-    final remaining = _lastBalance?.remaining.toStringAsFixed(2) ?? '--.--';
-    final used = _lastBalance?.used.toStringAsFixed(2) ?? '--.--';
-    final sym = _lastBalance?.currencySymbol ?? '\$';
-    try {
-      trayManager.setTitle(title);
-      trayManager.setToolTip(
-        AppLocalizations.of('balance_monitor_long', {
-          'name': provider.name,
-          'symbol': sym,
-          'remaining': remaining,
-          'used': used,
-        }),
-      );
-    } catch (e) {
-      debugPrint('Tray title update error: $e');
     }
   }
 
@@ -288,15 +178,12 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const SettingsView()),
     );
-    await _onRefreshRequested();
   }
 
   Future<void> _showTrayPopup() async {
     await windowManager.setSize(_kPopupSize);
     if (mounted) {
-      setState(() {
-        _isFullView = false;
-      });
+      setState(() => _isFullView = false);
     }
     try {
       final trayBounds = await trayManager.getBounds();
@@ -317,9 +204,7 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
   Future<void> _showFullWindow() async {
     await windowManager.setSize(_kFullSize);
     if (mounted) {
-      setState(() {
-        _isFullView = true;
-      });
+      setState(() => _isFullView = true);
     }
     await windowManager.center();
     await windowManager.show();
@@ -353,124 +238,149 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
   @override
   void onWindowBlur() async {
     if (!Platform.isMacOS) return;
+    _saveWindowPosition();
     await windowManager.hide();
     if (mounted) {
-      setState(() {
-        _isFullView = false;
-      });
+      setState(() => _isFullView = false);
     }
   }
 
   @override
   void onWindowClose() async {
-    _refreshTimer?.cancel();
+    _saveWindowPosition();
     await windowManager.hide();
     if (mounted) {
-      setState(() {
-        _isFullView = false;
-      });
+      setState(() => _isFullView = false);
     }
-  }
-
-  ThemeData _buildTheme() {
-    return ThemeData(
-      brightness: Brightness.light,
-      scaffoldBackgroundColor: AppColors.background,
-    );
-  }
-
-  ThemeData _buildDarkTheme() {
-    return ThemeData(
-      brightness: Brightness.dark,
-      scaffoldBackgroundColor: AppColors.background,
-    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final localeCode = ref.watch(localeSettingProvider).asData?.value ?? 'en';
+    final themeModeStr =
+        ref.watch(themeModeSettingProvider).asData?.value ?? 'system';
+    final themeMode = _parseThemeMode(themeModeStr);
+    final activeProvider = ref.watch(activeProviderProvider);
+    ref.watch(balanceProvider);
+
+    ref.listen(balanceProvider, (_, next) {
+      next.whenOrNull(data: (data) {
+        _updateTrayTitle(data);
+        _checkLowBalanceNotification(data);
+      });
+    });
+
     return MaterialApp(
-      key: ValueKey('$_localeCode$_themeMode'),
+      key: ValueKey('$localeCode$themeModeStr'),
       debugShowCheckedModeBanner: false,
-      theme: _buildTheme(),
-      darkTheme: _buildDarkTheme(),
-      themeMode: _themeMode,
-      home: _activeProvider == null || _providers.isEmpty
-          ? _buildEmptyState()
-          : _isFullView
-              ? DashboardView(
-                  activeProvider: _activeProvider!,
-                  allProviders: _providers,
-                  balanceFuture: _balanceFuture,
-                  onRefresh: _fetchBalance,
-                  onRefreshRequested: _onRefreshRequested,
-                  balanceColor: _balanceColor,
-                )
-              : TrayPopupView(
-                  activeProvider: _activeProvider!,
-                  balanceFuture: _balanceFuture,
-                  onOpenFullWindow: _showFullWindow,
-                  balanceColor: _balanceColor,
-                ),
+      theme: _buildTheme(Brightness.light, AppColors.light),
+      darkTheme: _buildTheme(Brightness.dark, AppColors.dark),
+      themeMode: themeMode,
+      home: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 200),
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        child: activeProvider == null
+            ? _buildEmptyState()
+            : _isFullView
+                ? DashboardView(key: const ValueKey('full'))
+                    .animate()
+                    .fadeIn(duration: 200.ms)
+                    .scale(
+                      begin: const Offset(0.97, 0.97),
+                      end: const Offset(1, 1),
+                      duration: 200.ms,
+                      curve: Curves.easeOut,
+                    )
+                : TrayPopupView(
+                    key: const ValueKey('popup'),
+                    onOpenFullWindow: _showFullWindow,
+                  ).animate().fadeIn(duration: 200.ms),
+      ),
+    );
+  }
+
+  static ThemeMode _parseThemeMode(String mode) {
+    switch (mode) {
+      case 'light':
+        return ThemeMode.light;
+      case 'dark':
+        return ThemeMode.dark;
+      default:
+        return ThemeMode.system;
+    }
+  }
+
+  ThemeData _buildTheme(Brightness brightness, AppColors colors) {
+    return ThemeData(
+      brightness: brightness,
+      scaffoldBackgroundColor: colors.background,
+      extensions: [colors],
     );
   }
 
   Widget _buildEmptyState() {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.dns_outlined,
-              size: 48,
-              color: AppColors.subtleText,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              AppLocalizations.of('no_providers'),
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.mutedText,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              AppLocalizations.of('add_first'),
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.faintText,
-              ),
-            ),
-            const SizedBox(height: 20),
-            TextButton.icon(
-              onPressed: _openSettings,
-              icon: Icon(
-                Icons.settings_outlined,
-                size: 16,
-                color: AppColors.secondaryText,
-              ),
-              label: Text(
-                AppLocalizations.of('settings'),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.secondaryText,
+    return Builder(
+      builder: (context) {
+        final colors = AppColors.of(context);
+        return Scaffold(
+          backgroundColor: colors.background,
+          body: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.dns_outlined,
+                  size: 48,
+                  color: colors.subtleText,
                 ),
-              ),
-              style: TextButton.styleFrom(
-                backgroundColor: AppColors.hoverBg,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
+                const SizedBox(height: 16),
+                Text(
+                  AppLocalizations.of('no_providers'),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: colors.mutedText,
+                  ),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                const SizedBox(height: 4),
+                Text(
+                  AppLocalizations.of('add_first'),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colors.faintText,
+                  ),
                 ),
-              ),
+                const SizedBox(height: 20),
+                TextButton.icon(
+                  onPressed: _openSettings,
+                  icon: Icon(
+                    Icons.settings_outlined,
+                    size: 16,
+                    color: colors.secondaryText,
+                  ),
+                  label: Text(
+                    AppLocalizations.of('settings'),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colors.secondaryText,
+                    ),
+                  ),
+                  style: TextButton.styleFrom(
+                    backgroundColor: colors.hoverBg,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

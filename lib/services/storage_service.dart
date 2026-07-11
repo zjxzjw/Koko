@@ -9,122 +9,33 @@ class StorageService {
   static const String _keySelected = 'selected_provider_id';
   static const String _keyLocale = 'app_locale';
   static const String _keyThemeMode = 'theme_mode';
+  static const String _keyWindowX = 'window_x';
+  static const String _keyWindowY = 'window_y';
+  static const String _keyWindowW = 'window_w';
+  static const String _keyWindowH = 'window_h';
 
   static final Future<SharedPreferences> _prefs =
       SharedPreferences.getInstance();
   static const _secure = FlutterSecureStorage();
-  static bool _secureAvailable = true;
 
   static String _apiKeyKey(String id) => 'api_key_$id';
 
   static Future<void> _writeSecure(String key, String value) async {
-    if (!_secureAvailable) {
-      await _writePrefsObfuscated(key, value);
-      return;
-    }
     try {
       await _secure.write(key: key, value: value);
     } catch (e) {
-      debugPrint('Secure storage unavailable, using fallback: $e');
-      _secureAvailable = false;
-      await _writePrefsObfuscated(key, value);
+      debugPrint('Secure storage error: $e');
+      rethrow;
     }
   }
 
   static Future<String?> _readSecure(String key) async {
-    if (!_secureAvailable) {
-      return _readPrefsObfuscated(key);
-    }
     try {
-      final val = await _secure.read(key: key);
-      if (val != null) return val;
-      return _readPrefsObfuscated(key);
+      return await _secure.read(key: key);
     } catch (e) {
-      debugPrint('Secure storage unavailable, using fallback: $e');
-      _secureAvailable = false;
-      return _readPrefsObfuscated(key);
+      debugPrint('Secure storage read error: $e');
+      return null;
     }
-  }
-
-  static Future<void> _deleteSecure(String key) async {
-    if (!_secureAvailable) {
-      await _deletePrefsKey(key);
-      return;
-    }
-    try {
-      await _secure.delete(key: key);
-    } catch (_) {
-      await _deletePrefsKey(key);
-    }
-  }
-
-  static Future<void> _writePrefsObfuscated(String key, String value) async {
-    final prefs = await _prefs;
-    await prefs.setString('_obs_$key', _obfuscate(value));
-  }
-
-  static Future<String?> _readPrefsObfuscated(String key) async {
-    final prefs = await _prefs;
-    final raw = prefs.getString('_obs_$key');
-    if (raw == null) return null;
-    return _deobfuscate(raw);
-  }
-
-  static Future<void> _deletePrefsKey(String key) async {
-    final prefs = await _prefs;
-    await prefs.remove('_obs_$key');
-  }
-
-  static String _obfuscate(String input) {
-    final bytes = utf8.encode(input);
-    final key = _obfuscationKey();
-    for (var i = 0; i < bytes.length; i++) {
-      bytes[i] = bytes[i] ^ key[i % key.length];
-    }
-    return base64Encode(bytes);
-  }
-
-  static String _deobfuscate(String encoded) {
-    try {
-      final bytes = base64Decode(encoded);
-      final key = _obfuscationKey();
-      for (var i = 0; i < bytes.length; i++) {
-        bytes[i] = bytes[i] ^ key[i % key.length];
-      }
-      return utf8.decode(bytes);
-    } catch (_) {
-      return '';
-    }
-  }
-
-  static List<int> _obfuscationKey() {
-    return [0x6B, 0x6F, 0x6B, 0x6F, 0x2D, 0x6B, 0x65, 0x79];
-  }
-
-  static Future<void> _cleanupOrphanedKeys(
-      Set<String> currentIds) async {
-    final prefs = await _prefs;
-    final allKeys = prefs.getKeys();
-    for (final k in allKeys) {
-      if (k.startsWith('_obs_api_key_') || k.startsWith('api_key_')) {
-        final id = k.startsWith('_obs_')
-            ? k.substring(5).replaceFirst('api_key_', '')
-            : k.replaceFirst('api_key_', '');
-        if (!currentIds.contains(id)) {
-          await prefs.remove(k);
-          await _deleteSecure('api_key_$id');
-        }
-      }
-    }
-
-    try {
-      final allSecure = await _secure.readAll();
-      for (final k in allSecure.keys) {
-        if (k.startsWith('api_key_') && !currentIds.contains(k.substring(8))) {
-          await _secure.delete(key: k);
-        }
-      }
-    } catch (_) {}
   }
 
   static Future<void> saveProviders(List<ProviderConfig> providers) async {
@@ -135,8 +46,6 @@ class StorageService {
     for (final p in providers) {
       await _writeSecure(_apiKeyKey(p.id), p.apiKey);
     }
-
-    await _cleanupOrphanedKeys(providers.map((p) => p.id).toSet());
   }
 
   static Future<List<ProviderConfig>> loadProviders() async {
@@ -199,6 +108,24 @@ class StorageService {
   static Future<String> loadThemeMode() async {
     final prefs = await _prefs;
     return prefs.getString(_keyThemeMode) ?? 'system';
+  }
+
+  static Future<void> saveWindowPosition(double x, double y, double w, double h) async {
+    final prefs = await _prefs;
+    await prefs.setDouble(_keyWindowX, x);
+    await prefs.setDouble(_keyWindowY, y);
+    await prefs.setDouble(_keyWindowW, w);
+    await prefs.setDouble(_keyWindowH, h);
+  }
+
+  static Future<double?> loadWindowX() async {
+    final prefs = await _prefs;
+    return prefs.getDouble(_keyWindowX);
+  }
+
+  static Future<double?> loadWindowY() async {
+    final prefs = await _prefs;
+    return prefs.getDouble(_keyWindowY);
   }
 
   static List<ProviderConfig> _defaultProviders() {
