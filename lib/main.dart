@@ -23,12 +23,8 @@ final _notifications = FlutterLocalNotificationsPlugin();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-  const iosSettings = DarwinInitializationSettings();
   const initSettings = InitializationSettings(
-    android: androidSettings,
-    iOS: iosSettings,
-    macOS: iosSettings,
+    macOS: DarwinInitializationSettings(),
   );
   await _notifications.initialize(initSettings);
 
@@ -231,18 +227,8 @@ class _BalanceMonitorAppState extends State<BalanceMonitorApp>
 
   Future<void> _showNotification(String title, String body) async {
     try {
-      const androidDetails = AndroidNotificationDetails(
-        'low_balance',
-        'Low Balance',
-        channelDescription: 'Notifications when balance drops below threshold',
-        importance: Importance.high,
-        priority: Priority.high,
-      );
-      const iosDetails = DarwinNotificationDetails();
       const details = NotificationDetails(
-        android: androidDetails,
-        iOS: iosDetails,
-        macOS: iosDetails,
+        macOS: DarwinNotificationDetails(),
       );
       await _notifications.show(
         DateTime.now().millisecondsSinceEpoch ~/ 1000,

@@ -22,13 +22,12 @@
 - **Model breakdown** — Per-model cost breakdown from the usage API.
 - **Local persistence** — API keys and provider configs stored locally via `shared_preferences`.
 
-##Supported Platforms
+## Supported Platforms
 
 | Platform |
 |----------|
 | macOS    |
 | Windows  |
-| Linux    |
 
 ## Tech Stack
 
@@ -61,14 +60,14 @@ lib/
 ### Prerequisites
 
 - [Flutter SDK](https://docs.flutter.dev/get-started/install) >= 3.10.7
-- macOS / Windows / Linux desktop development enabled (`flutter config --enable-<platform>-desktop`)
+- macOS / Windows desktop development enabled (`flutter config --enable-macos-desktop` / `flutter config --enable-windows-desktop`)
 
 ### Development
 
 ```bash
 git clone <repo-url> && cd koko
 flutter pub get
-flutter run -d macos    # or windows / linux
+flutter run -d macos    # or windows
 ```
 
 ### Build
@@ -79,9 +78,6 @@ flutter build macos
 
 # Windows
 flutter build windows
-
-# Linux
-flutter build linux
 ```
 
 ## Configuration
